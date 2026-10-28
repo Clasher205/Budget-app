@@ -218,6 +218,7 @@ button, .btn {
   gap: 6px;
   text-decoration: none;
 }
+button svg, .btn svg { width: 20px; height: 20px; flex: 0 0 20px; }
 button.primary, .btn.primary { background: var(--primary); color: var(--primary-text); border-color: var(--primary); }
 button.danger { color: var(--bad); }
 button.link { border: none; background: none; color: var(--primary); padding: 6px; min-height: 0; }

@@ -66,6 +66,14 @@ export function isoDate(date) {
   return `${date.getFullYear()}-${pad2(date.getMonth() + 1)}-${pad2(date.getDate())}`;
 }
 
+/** Zeitstempel (ISO, UTC) → "28.10.2026, 16:52 Uhr" in Ortszeit; leer bei fehlendem Wert. */
+export function formatDateTime(timestamp) {
+  if (!timestamp) return "";
+  const d = new Date(timestamp);
+  if (Number.isNaN(d.getTime())) return "";
+  return `${formatDate(isoDate(d))}, ${pad2(d.getHours())}:${pad2(d.getMinutes())} Uhr`;
+}
+
 export function todayIso() {
   return isoDate(new Date());
 }

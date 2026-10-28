@@ -72,3 +72,10 @@ test("formatting", () => {
   assert.equal(shiftMonth("2026-01", -1), "2025-12");
   assert.equal(daysInMonth("2028-02"), 29);
 });
+
+test("local date-time formatting", async () => {
+  const { formatDateTime } = await import("../js/logic/format.js");
+  const d = new Date(2026, 9, 28, 16, 52);
+  assert.equal(formatDateTime(d.toISOString()), "28.10.2026, 16:52 Uhr");
+  assert.equal(formatDateTime(null), "");
+});

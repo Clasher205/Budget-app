@@ -1,5 +1,5 @@
 /** Einstellungen: Konten, Töpfe, Kategorien, Regeln, Sicherung & Abgleich, Export. */
-import { formatAmountInput, formatDate, formatEur, formatMonth, monthOf, todayIso } from "../logic/format.js";
+import { formatAmountInput, formatDateTime, formatEur, formatMonth, monthOf, todayIso } from "../logic/format.js";
 import { parseAmount } from "../logic/csv.js";
 import { AREAS } from "../logic/budget.js";
 import { POT_TYPES } from "../logic/pots.js";
@@ -115,8 +115,8 @@ function backupSection(state) {
       erstellst du auf dem einen Gerät eine Sicherung und lädst sie auf dem anderen.</p>
     <ol class="small"><li>Auf dem Gerät mit dem neuesten Stand: <b>Sicherung erstellen</b> (herunterladen oder per Teilen-Menü an dich selbst senden).</li>
       <li>Auf dem anderen Gerät: <b>Sicherung laden</b> und die Datei auswählen. Die Daten dort werden dabei ersetzt.</li></ol>
-    <div class="box info small">Letzte Sicherung von diesem Gerät: ${last ? `${formatDate(last.slice(0, 10))}, ${last.slice(11, 16)} Uhr` : "noch keine"} ·
-      ${state.transactions.length} Buchungen · zuletzt geändert ${formatDate(state.meta.updated.slice(0, 10))}</div>
+    <div class="box info small">Letzte Sicherung von diesem Gerät: ${last ? formatDateTime(last) : "noch keine"} ·
+      ${state.transactions.length} Buchungen · zuletzt geändert ${formatDateTime(state.meta.updated)}</div>
     <div class="row"><button class="primary" data-action="backup-download">${icon("save")} Sicherung herunterladen</button>
       <button data-action="backup-share">Sicherung teilen …</button></div>
     <div class="field"><label for="backupFile">Sicherung laden (ersetzt die Daten auf diesem Gerät)</label>
@@ -201,8 +201,8 @@ export function bind(root, ctx) {
       const text = new TextDecoder("utf-8").decode(await readFileBytes(file));
       const { exportedAt, state } = parseBackup(text);
       const current = ctx.state;
-      const msg = `Sicherung vom <b>${formatDate(exportedAt?.slice(0, 10))}</b> mit ${state.transactions.length} Buchungen und ${state.accounts.length} Konten laden?<br><br>
-        Die Daten auf diesem Gerät (${current.transactions.length} Buchungen, zuletzt geändert ${formatDate(current.meta.updated.slice(0, 10))}) werden <b>ersetzt</b>.`;
+      const msg = `Sicherung vom <b>${formatDateTime(exportedAt) || "unbekanntem Datum"}</b> mit ${state.transactions.length} Buchungen und ${state.accounts.length} Konten laden?<br><br>
+        Die Daten auf diesem Gerät (${current.transactions.length} Buchungen, zuletzt geändert ${formatDateTime(current.meta.updated)}) werden <b>ersetzt</b>.`;
       if (await confirmDialog(msg, { okText: "Sicherung laden" })) {
         state.meta.lastBackup = exportedAt || state.meta.lastBackup;
         await ctx.replaceState(state);
