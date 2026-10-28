@@ -34,8 +34,11 @@ Tage. Rest pro Tag = verbleibend ÷ verbleibende Tage (inkl. heute).
 - Mobil zuerst: Jede Seite muss bei 390 px Breite ohne waagrechtes Scrollen funktionieren.
 - Lokal testen: `python -m http.server 8600`, Playwright mit Chromium (`/opt/pw-browsers/...` in der Cloud-Umgebung).
 
-## Hosting
-GitHub Pages aus einem öffentlichen Repository (nur Code, keine Daten). Der Nutzer hat das GitHub-Konto `Clasher205`.
+## Hosting & Stand
+- Live: **https://clasher205.github.io/Budget-app/** (GitHub Pages, Branch `main`, Ordner `/`, `.nojekyll` vorhanden).
+- Repository: `Clasher205/Budget-app` (öffentlich, nur Code). Push löst automatisch „pages build and deployment“ aus.
+- Die Daten der alten Streamlit-App (4 Konten, ~740 Buchungen) wurden per `tools/export_to_pwa.py` übernommen.
+- Im Netzwerk des Nutzers ist `raw.githubusercontent.com` nicht erreichbar: Dateien deshalb direkt im Chat schicken.
 
 ## Offene Ideen
 - Bankanbindung (FinTS) nur lokal denkbar, N26 hat kein FinTS. Im Browser technisch nicht direkt möglich (CORS),
