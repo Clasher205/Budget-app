@@ -40,7 +40,7 @@ export function render(ctx) {
   const accountField = `<div class="field"><label for="importAccount">Konto</label>
     <select id="importAccount" data-change="account">${options(state.accounts.map((a) => [a.id, `${a.name} (${a.area})`]), ui.importAccount)}</select></div>`;
   const fileField = `<div class="field"><label for="importFile">CSV-Datei</label>
-    <input type="file" id="importFile" accept=".csv,.txt,text/csv,text/plain,text/comma-separated-values" data-change="file"></div>`;
+    <input type="file" id="importFile" data-change="file"></div>`;
   let body = "";
   const data = ui.importData;
   if (data) {

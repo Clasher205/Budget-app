@@ -78,13 +78,19 @@ function uniqueHeaders(headers) {
   });
 }
 
-/** Liest eine Bank-CSV fehlertolerant. Vorspannzeilen werden übersprungen, kaputte Zeilen gemeldet. */
+/**
+ * Liest eine Bank-CSV fehlertolerant. Tabelle = breiteste Zeilenlänge, die mindestens zweimal vorkommt
+ * (Kopfzeile + Buchungen), damit Info-Vorspann wie bei ING nicht als Tabelle gilt. Kaputte Zeilen werden gemeldet.
+ */
 export function readCsv(text) {
   const delimiter = detectDelimiter(text);
   const all = parseCsv(text, delimiter);
   const lengths = all.map((r) => r.length).filter((l) => l > 1);
   if (!lengths.length) throw new Error("Die Datei enthält keine erkennbare Tabelle.");
-  const [width] = mostCommon(lengths);
+  const counts = new Map();
+  for (const l of lengths) counts.set(l, (counts.get(l) || 0) + 1);
+  const repeated = [...counts].filter(([, c]) => c >= 2).map(([l]) => l);
+  const width = repeated.length ? Math.max(...repeated) : mostCommon(lengths)[0];
   const headerIdx = all.findIndex((r) => r.length === width);
   const headers = uniqueHeaders(all[headerIdx]);
   const rows = [];
@@ -158,8 +164,11 @@ export function transactionKey(date, amount, payee, purpose) {
   return [date, amount, normalizeText(payee).toLowerCase(), normalizeText(purpose).toLowerCase()].join("|");
 }
 
+/** Kurze Namen, die nur als exakter Spaltenname zählen (sonst träfe „buchung“ auch „Buchungstext“). */
+const EXACT_ONLY = new Set(["buchung", "text", "name"]);
+
 const GUESSES = {
-  date: ["buchungsdatum", "buchungstag", "datum", "date", "valuta", "wertstellung"],
+  date: ["buchungsdatum", "buchungstag", "buchung", "datum", "date", "valuta", "wertstellung"],
   amount: ["betrag (€)", "betrag (eur)", "betrag", "umsatz", "amount"],
   purpose: ["verwendungszweck", "buchungstext", "beschreibung", "zweck", "text"],
   payee: ["empfänger/auftraggeber", "beguenstigter/zahlungspflichtiger", "begünstigter/zahlungspflichtiger",
@@ -181,6 +190,7 @@ export function guessMapping(headers) {
     for (const field of ["date", "purpose", "payee", "debit", "credit", "amount"]) {
       if (mapping[field]) continue;
       for (const keyword of GUESSES[field]) {
+        if (!exact && EXACT_ONLY.has(keyword)) continue;
         const hit = lowered.find(([h, low]) => !used.has(h) && (exact ? low === keyword : low.includes(keyword)));
         if (hit) { mapping[field] = hit[0]; used.add(hit[0]); break; }
       }

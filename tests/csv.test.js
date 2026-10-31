@@ -79,3 +79,23 @@ test("local date-time formatting", async () => {
   assert.equal(formatDateTime(d.toISOString()), "28.10.2026, 16:52 Uhr");
   assert.equal(formatDateTime(null), "");
 });
+
+test("ING-Format (erfundene Daten, Latin-1, Vorspann)", () => {
+  const text = [
+    "Umsatzanzeige;Datei erstellt am: 31.10.2026 10:00", "", "IBAN;DE00 0000 0000 0000 0000 00", "Kontoname;Girokonto",
+    "Bank;ING", "Kunde;Max Muster", "Zeitraum;01.10.2026 - 31.10.2026", "Saldo;1.234,56;EUR", "",
+    "Sortierung;Datum absteigend", "", "In der CSV-Datei finden Sie alle bereits gebuchten Umsätze.", "",
+    "Buchung;Wertstellungsdatum;Auftraggeber/Empfänger;Buchungstext;Verwendungszweck;Saldo;Währung;Betrag;Währung",
+    "30.10.2026;30.10.2026;Frischmarkt Beispiel;Lastschrift;Einkauf;1.234,56;EUR;-23,45;EUR",
+    "29.10.2026;28.10.2026;Arbeitgeber Muster;Gutschrift;Lohn Oktober;1.258,01;EUR;538,00;EUR",
+  ].join("\r\n");
+  const bytes = new Uint8Array([...text].map((c) => c.charCodeAt(0)));
+  const { text: decoded, encoding } = decodeBytes(bytes);
+  assert.equal(encoding, "Windows-1252");
+  const parsed = readCsv(decoded);
+  const m = guessMapping(parsed.headers);
+  assert.deepEqual([m.date, m.payee, m.purpose, m.amount], ["Buchung", "Auftraggeber/Empfänger", "Verwendungszweck", "Betrag"]);
+  const { rows, errors } = transform(parsed, m);
+  assert.deepEqual(rows.map((r) => [r.date, r.amount]), [["2026-10-30", -2345], ["2026-10-29", 53800]]);
+  assert.equal(errors.length, 0);
+});
