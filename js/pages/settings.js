@@ -77,9 +77,12 @@ function potsSection(ctx) {
       <div class="fields"><div class="field"><label>Topf-Art</label><select name="type-${a.id}">${options([["", "kein Topf"], ...POT_TYPES.map((t) => [t, t])], a.potType || "")}</select></div>
       <div class="field"><label>Monatsbetrag (€)</label><input type="text" inputmode="decimal" name="budget-${a.id}" value="${formatAmountInput(a.potBudget)}" placeholder="z. B. 250"></div>
       <div class="field"><label>Abweichend im ${formatMonth(month)} (€)</label><input type="text" inputmode="decimal" name="ov-${a.id}" value="${formatAmountInput(state.potOverrides[`${a.id}|${month}`] ?? null)}" placeholder="–"></div></div>
-      <details ${a.potExcluded.length ? "open" : ""}><summary>Kategorien, die nicht zum Topf zählen${a.potExcluded.length ? ` (${a.potExcluded.length})` : ""}</summary>
-        <p class="subtle small">Z. B. Miete oder Verträge, die vom Hauptkonto abgehen, aber nicht zum Freizeitbudget gehören. Gilt nur für Ausgaben-Töpfe.</p>
-        <div class="chips">${cats.filter((c) => c.kind === "Ausgabe").map((c) => `<label><input type="checkbox" name="ex-${a.id}" value="${c.id}" ${a.potExcluded.includes(c.id) ? "checked" : ""}>${esc(c.name)}</label>`).join("")}</div></details>
+      ${a.potType === "Sparen"
+    ? `${a.potExcluded.map((c) => `<input type="hidden" name="ex-${a.id}" value="${c}">`).join("")}
+      <p class="subtle small">Sparziel = alle Eingänge minus alle Abgänge dieses Kontos im Monat (z. B. +300 € − Auto − Sparplan).</p>`
+    : `<details ${a.potExcluded.length ? "open" : ""}><summary>Kategorien, die nicht zum Topf zählen${a.potExcluded.length ? ` (${a.potExcluded.length})` : ""}</summary>
+        <p class="subtle small">Z. B. Miete oder Verträge, die vom Hauptkonto abgehen, aber nicht zum Freizeitbudget gehören.</p>
+        <div class="chips">${cats.filter((c) => c.kind === "Ausgabe").map((c) => `<label><input type="checkbox" name="ex-${a.id}" value="${c.id}" ${a.potExcluded.includes(c.id) ? "checked" : ""}>${esc(c.name)}</label>`).join("")}</div></details>`}
     </div>`).join("")}
     <div class="box bad" id="potError" hidden></div><button class="primary">Töpfe speichern</button></form></section>`;
 }

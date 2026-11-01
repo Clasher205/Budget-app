@@ -1,10 +1,21 @@
 /** Startseite „Kurs“: Töpfe mit Kursanzeige, Rest pro Tag und Monatsvergleich. */
-import { formatEur, formatMonth, formatPct, monthOf, percent, shiftMonth, todayIso } from "../logic/format.js";
-import { potAmounts, potHistory, potStatus } from "../logic/pots.js";
+import { formatDate, formatEur, formatMonth, formatPct, monthOf, percent, shiftMonth, todayIso } from "../logic/format.js";
+import { potAmounts, potHistory, potStatus, potTransactions } from "../logic/pots.js";
 import { potBudgetFor } from "../state.js";
 import { countedTransactions } from "../data.js";
 import { courseChart } from "../charts.js";
 import { esc, monthSelect, monthList } from "../ui.js";
+
+/** Aufklappbare Liste der Buchungen, aus denen die Zahlen eines Topfs berechnet werden. */
+function countedList(list, isSpend, month) {
+  const sorted = [...list].sort((a, b) => (a.bookedDate || a.date).localeCompare(b.bookedDate || b.date));
+  return `<details style="margin-top:8px"><summary>Welche Buchungen zählen? (${sorted.length})</summary>
+    <p class="subtle small">${isSpend ? "Abbuchungen ohne Umbuchungen und ohne ausgeschlossene Kategorien."
+    : "Alle Eingänge und Abgänge dieses Kontos, auch Umbuchungen."} Eingänge ab dem Stichtag des Vormonats zählen für ${formatMonth(month)}.</p>
+    <ul class="list">${sorted.map((t) => `<li><div class="tx-main"><div><div class="tx-title">${esc(t.payee || "–")}</div>
+      <div class="tx-sub">${formatDate(t.bookedDate || t.date)}${t.bookedDate ? ` · zählt für ${formatMonth(month)}` : ""}${t.transfer ? " · Umbuchung" : ""}${t.purpose ? ` · ${esc(t.purpose)}` : ""}</div></div>
+      <div class="amount ${t.amount > 0 ? "pos" : ""}">${formatEur(t.amount)}</div></div></li>`).join("")}</ul></details>`;
+}
 
 function potCard(state, account, month, today) {
   const budget = potBudgetFor(state, account, month);
@@ -44,7 +55,8 @@ function potCard(state, account, month, today) {
     <div class="grid cols-4">${metrics.map(([l, v, n]) => `<div class="metric"><div class="label">${l}</div><div class="value">${v}</div><div class="note">${n}</div></div>`).join("")}</div>
     <div class="box ${s.level}">${esc(s.status)}</div>
     ${s.day > 0 ? courseChart(s) : ""}
-    ${tx.length ? "" : '<p class="subtle small">Für dieses Konto gibt es in diesem Monat noch keine importierten Buchungen.</p>'}
+    ${tx.length ? countedList(potTransactions(tx, account.potType, account.potExcluded), isSpend, month)
+    : '<p class="subtle small">Für dieses Konto gibt es in diesem Monat noch keine importierten Buchungen.</p>'}
   </section>`;
 }
 

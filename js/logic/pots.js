@@ -18,11 +18,15 @@ export function monthProgress(month, todayIso) {
  * Spar-Topf: Netto-Zufluss inkl. Umbuchungen.
  */
 export function potAmounts(transactions, potType, excluded = []) {
-  if (potType === "Sparen") return transactions.map((t) => ({ date: t.date, value: t.amount }));
+  return potTransactions(transactions, potType, excluded)
+    .map((t) => ({ date: t.date, value: potType === "Sparen" ? t.amount : -t.amount }));
+}
+
+/** Die Buchungen, die in einen Topf einfließen (gleiche Auswahl wie `potAmounts`). */
+export function potTransactions(transactions, potType, excluded = []) {
+  if (potType === "Sparen") return transactions;
   const skip = new Set(excluded);
-  return transactions
-    .filter((t) => t.amount < 0 && !t.transfer && !skip.has(t.categoryId))
-    .map((t) => ({ date: t.date, value: -t.amount }));
+  return transactions.filter((t) => t.amount < 0 && !t.transfer && !skip.has(t.categoryId));
 }
 
 /** Kurs eines Topfs. `ahead` > 0 heißt: besser als das Soll bis heute. */
