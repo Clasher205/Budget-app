@@ -160,3 +160,18 @@ test("Stichtag: Eingänge ab dem 20. zählen zum Folgemonat", async () => {
   assert.equal(normalizeCutoff(""), null);
   assert.throws(() => normalizeCutoff("31"));
 });
+
+test("Sparziel: Eingang 300 € minus Auto 140 € und Sparplan 60 € = 100 € netto, alter Kontostand zählt nicht", () => {
+  const txs = [
+    { date: "2026-10-31", amount: 30000, transfer: true },   // Umbuchung vom Girokonto, zählt für November
+    { date: "2026-11-03", amount: -14000 },                  // Auto
+    { date: "2026-11-05", amount: -6000 },                   // Sparplan
+  ];
+  const counted = txs.map((t) => (t.date === "2026-10-31" ? { ...t, date: "2026-11-01" } : t));
+  const s = potStatus("Sparen", 10000, "2026-11", potAmounts(counted, "Sparen"), "2026-11-10");
+  assert.deepEqual([s.inflow, s.outflow, s.used], [30000, 20000, 10000]);
+  assert.deepEqual(s.cumulative.slice(0, 6), [30000, 30000, 16000, 16000, 10000, 10000]);
+  assert.equal(s.status, "Sparziel erreicht");
+  const extra = potStatus("Sparen", 10000, "2026-11", potAmounts([...counted, { date: "2026-11-08", amount: 5000 }], "Sparen"), "2026-11-10");
+  assert.deepEqual([extra.used, extra.level], [15000, "good"]);
+});

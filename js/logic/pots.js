@@ -37,6 +37,9 @@ export function potStatus(potType, budget, month, amounts, todayIso) {
   let running = 0;
   for (let i = 0; i < day; i++) { running += daily[i]; cumulative.push(running); }
   const used = daily.reduce((s, v) => s + v, 0);
+  const monthAmounts = amounts.filter((a) => { const i = Number(a.date.slice(8, 10)) - 1; return i >= 0 && i < days; });
+  const inflow = monthAmounts.filter((a) => a.value > 0).reduce((s, a) => s + a.value, 0);
+  const outflow = monthAmounts.filter((a) => a.value < 0).reduce((s, a) => s - a.value, 0);
   const ideal = Math.round((budget * day) / days);
   const remaining = budget - used;
   const perDayNominal = Math.round(budget / days);
@@ -63,7 +66,7 @@ export function potStatus(potType, budget, month, amounts, todayIso) {
     else if (used * 100 <= ideal * 110) [status, level] = [`Knapp über Kurs: ${formatEur(-ahead)} über dem Soll`, "warn"];
     else [status, level] = [`Über Kurs: ${formatEur(-ahead)} über dem Soll bis heute`, "bad"];
   }
-  return { potType, budget, used, day, days, ideal, ahead, remaining, perDayNominal, perDayRemaining,
+  return { potType, budget, used, inflow, outflow, day, days, ideal, ahead, remaining, perDayNominal, perDayRemaining,
     status, level, cumulative };
 }
 

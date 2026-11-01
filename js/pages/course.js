@@ -17,7 +17,7 @@ function potCard(state, account, month, today) {
     ? (s.perDayRemaining !== null
       ? `<div class="hero"><span class="big">${formatEur(s.perDayRemaining)}</span><span class="subtle">pro Tag ab heute verfügbar</span></div>`
       : `<div class="hero"><span class="big">${formatEur(s.remaining)}</span><span class="subtle">übrig</span></div>`)
-    : `<div class="hero"><span class="big">${formatEur(s.used)}</span><span class="subtle">von ${formatEur(budget)} gespart</span></div>`;
+    : `<div class="hero"><span class="big">${formatEur(s.used)}</span><span class="subtle">netto gespart · Ziel ${formatEur(budget)}</span></div>`;
   const aheadLabel = isSpend
     ? (s.ahead >= 0 ? "unter Kurs ✓" : "über Kurs")
     : (s.ahead >= 0 ? "vor dem Plan ✓" : "hinter dem Plan");
@@ -26,9 +26,12 @@ function potCard(state, account, month, today) {
       ["Ausgegeben", formatEur(s.used), `${formatPct(percent(s.used, budget))} verbraucht`],
       ["Soll bis heute", formatEur(s.ideal), `Tag ${s.day} von ${s.days}`],
       ["Abweichung", formatEur(Math.abs(s.ahead)), aheadLabel]]
-    : [["Sparziel", formatEur(budget), ""], ["Gespart", formatEur(s.used), ""],
-      ["Soll bis heute", formatEur(s.ideal), `Tag ${s.day} von ${s.days}`],
-      ["Abweichung", formatEur(Math.abs(s.ahead)), aheadLabel]];
+    : [["Sparziel", formatEur(budget), "pro Monat, netto"],
+      ["Eingezahlt", formatEur(s.inflow), "inkl. Umbuchungen"],
+      ["Abgänge", formatEur(-s.outflow), "z. B. Sparplan, Auto"],
+      ["Netto gespart", formatEur(s.used), s.used >= budget
+        ? `Ziel erreicht ✓${s.used > budget ? ` (+${formatEur(s.used - budget)})` : ""}`
+        : `noch ${formatEur(budget - s.used)} bis zum Ziel`]];
   const barClass = s.level === "bad" ? "bad" : s.level === "warn" ? "warn" : "";
   return `<section class="card">
     <div class="row between"><div><h2 style="margin:0">${esc(account.name)}</h2>
@@ -37,7 +40,7 @@ function potCard(state, account, month, today) {
     ${hero}
     <div class="progress" title="${Math.round(share * 100)} %"><span class="${barClass}" style="width:${share * 100}%"></span>
       ${s.day > 0 && s.day < s.days ? `<i style="left:calc(${idealShare * 100}% - 1px)" title="Soll bis heute"></i>` : ""}</div>
-    <div class="subtle small" style="margin-bottom:10px">Balken = verbraucht · Strich = Soll bis heute</div>
+    <div class="subtle small" style="margin-bottom:10px">Balken = ${isSpend ? "verbraucht" : "netto gespart"} · Strich = Soll bis heute</div>
     <div class="grid cols-4">${metrics.map(([l, v, n]) => `<div class="metric"><div class="label">${l}</div><div class="value">${v}</div><div class="note">${n}</div></div>`).join("")}</div>
     <div class="box ${s.level}">${esc(s.status)}</div>
     ${s.day > 0 ? courseChart(s) : ""}
