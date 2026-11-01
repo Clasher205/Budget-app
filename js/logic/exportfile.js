@@ -42,7 +42,7 @@ export function reportTables(figures, budgetRows, transactions, accountNames, ca
     {
       name: "Buchungen",
       header: ["Datum", "Konto", "Empfänger/Auftraggeber", "Verwendungszweck", "Kategorie", "Umbuchung", "Betrag (€)"],
-      rows: transactions.map((t) => [str(formatDate(t.date)), str(accountNames.get(t.accountId) || ""), str(t.payee),
+      rows: transactions.map((t) => [str(formatDate(t.bookedDate || t.date)), str(accountNames.get(t.accountId) || ""), str(t.payee),
         str(t.purpose), str(categoryNames.get(t.categoryId) || "Unkategorisiert"), str(t.transfer ? "ja" : ""),
         eur(t.amount)]),
     },

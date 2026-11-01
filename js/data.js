@@ -1,5 +1,6 @@
 /** Abfragen auf dem State, die mehrere Seiten brauchen. */
 import { AREAS, keyFigures, planVsActual } from "./logic/budget.js";
+import { withCountedDates } from "./logic/periods.js";
 
 export const BOTH = "Beide";
 
@@ -23,10 +24,18 @@ export function areasFor(area) {
   return area === BOTH ? AREAS : [area];
 }
 
-/** Buchungen gefiltert nach Monat ("JJJJ-MM" oder null), Bereich und Konto, neueste zuerst. */
-export function filterTransactions(state, { month = null, area = BOTH, accountId = null } = {}) {
+/** Buchungen mit dem Datum, für das sie im Budget zählen (Eingänge ab dem Stichtag → Folgemonat). */
+export function countedTransactions(state) {
+  return withCountedDates(state.transactions, state.settings?.incomeCutoffDay ?? null);
+}
+
+/**
+ * Buchungen gefiltert nach Monat ("JJJJ-MM" oder null), Bereich und Konto, neueste zuerst.
+ * `counted`: nach Budget-Monat filtern (Standard) statt nach echtem Buchungsdatum.
+ */
+export function filterTransactions(state, { month = null, area = BOTH, accountId = null, counted = true } = {}) {
   const accounts = accountMap(state);
-  return state.transactions
+  return (counted ? countedTransactions(state) : state.transactions)
     .filter((t) => (!month || t.date.startsWith(month))
       && (area === BOTH || accounts.get(t.accountId)?.area === area)
       && (!accountId || t.accountId === accountId))

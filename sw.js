@@ -1,11 +1,11 @@
 /* Service Worker: hält die App-Dateien offline vor. Daten liegen in IndexedDB, nicht hier. */
-const VERSION = "v3";
+const VERSION = "v4";
 const CACHE = `budget-app-${VERSION}`;
 const FILES = [
   "./", "./index.html", "./manifest.webmanifest", "./css/app.css",
   "./js/app.js", "./js/state.js", "./js/storage.js", "./js/ui.js", "./js/charts.js", "./js/data.js",
   "./js/logic/format.js", "./js/logic/csv.js", "./js/logic/rules.js", "./js/logic/budget.js",
-  "./js/logic/pots.js", "./js/logic/fixed.js", "./js/logic/exportfile.js",
+  "./js/logic/pots.js", "./js/logic/fixed.js", "./js/logic/exportfile.js", "./js/logic/periods.js",
   "./js/pages/course.js", "./js/pages/overview.js", "./js/pages/transactions.js", "./js/pages/import.js",
   "./js/pages/budget.js", "./js/pages/fixed.js", "./js/pages/settings.js", "./js/pages/more.js",
   "./icons/icon-192.png", "./icons/icon-512.png", "./icons/icon-maskable-512.png", "./icons/apple-touch-icon.png",

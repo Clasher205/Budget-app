@@ -2,12 +2,13 @@
 import { formatEur, formatMonth, formatPct, monthOf, percent, shiftMonth, todayIso } from "../logic/format.js";
 import { potAmounts, potHistory, potStatus } from "../logic/pots.js";
 import { potBudgetFor } from "../state.js";
+import { countedTransactions } from "../data.js";
 import { courseChart } from "../charts.js";
 import { esc, monthSelect, monthList } from "../ui.js";
 
 function potCard(state, account, month, today) {
   const budget = potBudgetFor(state, account, month);
-  const tx = state.transactions.filter((t) => t.accountId === account.id && t.date.startsWith(month));
+  const tx = countedTransactions(state).filter((t) => t.accountId === account.id && t.date.startsWith(month));
   const s = potStatus(account.potType, budget, month, potAmounts(tx, account.potType, account.potExcluded), today);
   const isSpend = s.potType === "Ausgaben";
   const share = budget ? Math.min(Math.max(s.used / budget, 0), 1) : 0;
@@ -50,7 +51,7 @@ function historyTable(state, pots, month, today) {
   const range = [5, 4, 3, 2, 1, 0].map((i) => shiftMonth(month, -i)).filter((m) => m >= first);
   const rows = [];
   for (const acc of pots) {
-    const tx = state.transactions.filter((t) => t.accountId === acc.id);
+    const tx = countedTransactions(state).filter((t) => t.accountId === acc.id);
     const plan = range.map((m) => [m, potBudgetFor(state, acc, m)]);
     for (const h of potHistory(acc.potType, plan, tx, acc.potExcluded, today)) {
       const result = h.kept === null ? "läuft" : h.kept ? "✅" : "❌";

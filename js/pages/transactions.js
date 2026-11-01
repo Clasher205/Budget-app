@@ -1,5 +1,6 @@
 /** Buchungen: offene (unkategorisierte) zuordnen, alle Buchungen durchsuchen und korrigieren. */
-import { formatDate, formatEur } from "../logic/format.js";
+import { formatDate, formatEur, formatMonth, monthOf } from "../logic/format.js";
+import { countedMonth } from "../logic/periods.js";
 import { addRule, deleteTransaction, setCategory, setTransfer } from "../state.js";
 import { accountNames, filterTransactions, sortedCategories } from "../data.js";
 import { filterBar } from "./overview.js";
@@ -33,7 +34,12 @@ function allList(ctx) {
   const { state, ui } = ctx;
   const f = filterBar(ctx, "tx");
   const query = (ui.txSearch || "").trim().toLowerCase();
-  let txs = filterTransactions(state, { month: ui.txAllMonths ? null : f.month, area: f.area, accountId: f.accountId });
+  let txs = filterTransactions(state, { month: ui.txAllMonths ? null : f.month, area: f.area, accountId: f.accountId, counted: false });
+  const cutoff = state.settings?.incomeCutoffDay ?? null;
+  const countsFor = (t) => {
+    const m = countedMonth(t, cutoff);
+    return m === monthOf(t.date) ? "" : ` · zählt für ${formatMonth(m)}`;
+  };
   if (query) txs = txs.filter((t) => `${t.payee} ${t.purpose}`.toLowerCase().includes(query));
   const limit = ui.txLimit || PAGE_SIZE;
   const names = accountNames(state);
@@ -44,7 +50,7 @@ function allList(ctx) {
       „Umbuchung“ = Geld zwischen deinen eigenen Konten.</p>
     <ul class="list">${txs.slice(0, limit).map((t) => `<li>
       <div class="tx-main"><div><div class="tx-title">${esc(t.payee || "–")}</div>
-        <div class="tx-sub">${formatDate(t.date)} · ${esc(names.get(t.accountId))}${t.purpose ? ` · ${esc(t.purpose)}` : ""}${t.manual ? " · manuell" : ""}</div></div>
+        <div class="tx-sub">${formatDate(t.date)} · ${esc(names.get(t.accountId))}${t.purpose ? ` · ${esc(t.purpose)}` : ""}${t.manual ? " · manuell" : ""}${countsFor(t)}</div></div>
         <div class="amount ${t.amount > 0 ? "pos" : ""}">${formatEur(t.amount)}</div></div>
       <div class="tx-controls">${categorySelect(state, t, "recat")}
         <label class="check small"><input type="checkbox" data-change="transfer" data-id="${t.id}" ${t.transfer ? "checked" : ""}> Umbuchung</label></div>

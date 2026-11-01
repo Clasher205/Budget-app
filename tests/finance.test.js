@@ -142,3 +142,21 @@ test("export csv and xlsx", () => {
   assert.equal(xlsx[0], 0x50);
   assert.equal(xlsx[1], 0x4b);
 });
+
+test("Stichtag: Eingänge ab dem 20. zählen zum Folgemonat", async () => {
+  const { countedMonth, withCountedDates, normalizeCutoff } = await import("../js/logic/periods.js");
+  const save = { date: "2026-10-31", amount: 10000, transfer: true, accountId: 3 };
+  const spend = { date: "2026-10-31", amount: -500, accountId: 3 };
+  const early = { date: "2026-10-19", amount: 538, accountId: 1 };
+  assert.equal(countedMonth(save, 20), "2026-11");
+  assert.equal(countedMonth(spend, 20), "2026-10");
+  assert.equal(countedMonth(early, 20), "2026-10");
+  assert.equal(countedMonth(save, null), "2026-10");
+  assert.equal(countedMonth({ date: "2026-12-20", amount: 1 }, 20), "2027-01");
+  const shifted = withCountedDates([save, spend], 20);
+  assert.deepEqual(shifted.map((t) => [t.date, t.bookedDate]), [["2026-11-01", "2026-10-31"], ["2026-10-31", undefined]]);
+  const s = potStatus("Sparen", 10000, "2026-11", potAmounts(shifted.filter((t) => t.date.startsWith("2026-11")), "Sparen"), "2026-11-01");
+  assert.equal(s.status, "Sparziel erreicht");
+  assert.equal(normalizeCutoff(""), null);
+  assert.throws(() => normalizeCutoff("31"));
+});

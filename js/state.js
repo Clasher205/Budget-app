@@ -1,6 +1,7 @@
 /** Datenmodell und Aktionen (reine Funktionen auf dem State-Objekt, ohne Browser-APIs). */
 import { matchCategory, applyRules, matchTransfers } from "./logic/rules.js";
 import { budgetKey, overrideKey } from "./logic/budget.js";
+import { DEFAULT_CUTOFF_DAY } from "./logic/periods.js";
 
 export const FORMAT_VERSION = 1;
 
@@ -24,6 +25,7 @@ export function createState() {
     potOverrides: {},
     fixedCosts: [],
     ignoredSubscriptions: [],
+    settings: { incomeCutoffDay: DEFAULT_CUTOFF_DAY },
     meta: { created: new Date().toISOString(), updated: new Date().toISOString(), lastBackup: null },
   };
   DEFAULT_CATEGORIES.forEach(([name, kind], order) => state.categories.push({ id: newId(state), name, kind, order }));
@@ -53,6 +55,7 @@ export function upgradeState(state) {
   const maxId = Math.max(0, ...["accounts", "categories", "transactions", "rules", "fixedCosts"]
     .flatMap((k) => state[k].map((x) => x.id)));
   state.nextId = Math.max(state.nextId || 1, maxId + 1);
+  if (!("incomeCutoffDay" in state.settings)) state.settings.incomeCutoffDay = DEFAULT_CUTOFF_DAY;
   state.version = FORMAT_VERSION;
   return state;
 }

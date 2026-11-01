@@ -3,6 +3,7 @@ import { formatAmountInput, formatDateTime, formatEur, formatMonth, monthOf, tod
 import { parseAmount } from "../logic/csv.js";
 import { AREAS } from "../logic/budget.js";
 import { POT_TYPES } from "../logic/pots.js";
+import { normalizeCutoff } from "../logic/periods.js";
 import { reportCsv, reportTables, reportXlsx } from "../logic/exportfile.js";
 import { addAccount, addCategory, addRule, backupPayload, deleteAccount, deleteCategory, deleteRule, parseBackup,
   reapplyRules, setPot, setPotOverride } from "../state.js";
@@ -53,7 +54,16 @@ function potsSection(ctx) {
   if (!state.accounts.length) return '<section class="card"><h2>Töpfe</h2><p>Lege zuerst Konten an.</p></section>';
   const month = ui.potMonth || monthOf(todayIso());
   const cats = sortedCategories(state);
-  return `<section class="card"><h2>Töpfe einrichten</h2>
+  const cutoff = state.settings?.incomeCutoffDay ?? null;
+  return `<section class="card"><h2>Monatswechsel</h2>
+    <form id="cutoffForm" class="row" style="align-items:end">
+      <div class="field" style="max-width:220px"><label for="cutoffDay">Eingänge ab dem … zählen zum Folgemonat</label>
+        <input type="number" id="cutoffDay" name="cutoffDay" min="2" max="28" step="1" value="${cutoff ?? ""}" placeholder="aus"></div>
+      <button>Speichern</button></form>
+    <p class="subtle small">Beispiel Stichtag 20: Gehalt am 28.10. oder die Sparüberweisung am 31.10. zählen für November. Ausgaben zählen immer
+      in dem Monat, in dem sie anfallen. Leer lassen = jede Buchung zählt in ihrem Buchungsmonat.</p>
+    <div class="box bad" id="cutoffError" hidden></div></section>
+    <section class="card"><h2>Töpfe einrichten</h2>
     <p class="subtle small"><b>Ausgaben-Topf:</b> so viel darf im Monat von diesem Konto ausgegeben werden (z. B. Essen 250 €).
       <b>Sparen:</b> so viel soll im Monat auf dem Konto ankommen. Umbuchungen zwischen deinen Konten zählen beim Ausgaben-Topf nicht als Ausgabe.</p>
     <div class="field" style="max-width:260px;margin-bottom:12px"><label for="potMonth">Abweichung für Monat</label>${monthSelect(state, "potMonth", month)}</div>
@@ -166,6 +176,21 @@ export function bind(root, ctx) {
         : "Der Browser hat keinen dauerhaften Speicherschutz bestätigt. Erstelle regelmäßig Sicherungen. Als installierte App ist das Risiko gering.";
     });
   }
+
+  root.querySelector("#cutoffForm")?.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    let day;
+    try {
+      day = normalizeCutoff(new FormData(e.target).get("cutoffDay"));
+    } catch (err) {
+      const box = root.querySelector("#cutoffError");
+      box.textContent = err.message;
+      box.hidden = false;
+      return;
+    }
+    await ctx.commit((s) => { s.settings.incomeCutoffDay = day; },
+      day ? `Eingänge ab dem ${day}. zählen jetzt zum Folgemonat.` : "Stichtag aus: Jede Buchung zählt in ihrem Buchungsmonat.");
+  });
 
   root.querySelector("#potForm")?.addEventListener("submit", async (e) => {
     e.preventDefault();

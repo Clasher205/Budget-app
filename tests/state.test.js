@@ -56,3 +56,11 @@ test("migration file from old app is accepted", { skip: !existsSync(`${SP}/migra
     assert.equal(keys.size, state.transactions.length);
   }
 });
+
+test("Stichtag-Einstellung: Standard 20, alte Stände bekommen sie nachgerüstet", async () => {
+  const { upgradeState } = await import("../js/state.js");
+  assert.equal(createState().settings.incomeCutoffDay, 20);
+  const old = createState();
+  delete old.settings;
+  assert.equal(upgradeState(old).settings.incomeCutoffDay, 20);
+});
