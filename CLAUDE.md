@@ -18,7 +18,8 @@
 Hauptkonto (alle Einnahmen, gleichzeitig Freizeit-Topf), Essenskonto (Ausgaben-Topf, z. B. 250 €), Sparkonto (Sparziel),
 N26-Geschäftskonto (Bereich Business). Kernfunktion ist die **Kursanzeige**: Soll bis heute = Budget ÷ Tage × vergangene
 Tage. Rest pro Tag = verbleibend ÷ verbleibende Tage (inkl. heute).
-**Stichtag:** Eingänge (positive Beträge) ab dem Stichtag (`state.settings.incomeCutoffDay`, Standard 20, null = aus)
+**Stichtag:** Eingänge (positive Beträge) ab dem Stichtag (`state.settings.incomeCutoffDay`, Standard 20, null = aus;
+pro Konto überschreibbar mit `account.cutoffDay`, 31 = letzter Tag des Monats; Nutzer: allgemein 23, Sparkonten 31)
 zählen zum Folgemonat, damit Gehalt und Monatsend-Überweisungen (z. B. Sparen am 31.) im neuen Monat zählen. Ausgaben
 bleiben in ihrem Monat. Logik in `js/logic/periods.js`. Für Budget-Auswertungen immer `countedTransactions`/`filterTransactions`
 (counted) nutzen, für Listen mit echtem Datum `counted: false`.

@@ -49,6 +49,7 @@ export function upgradeState(state) {
     a.potBudget ??= null;
     a.openingBalance ??= null;
     a.profile ??= null;
+    a.cutoffDay ??= null;
   }
   for (const t of state.transactions) {
     t.manual ??= false;
@@ -73,7 +74,7 @@ export function addAccount(state, { name, area, openingBalance = null }) {
   if (!["Privat", "Business"].includes(area)) throw new Error("Ungültiger Bereich.");
   if (state.accounts.some((a) => a.name.toLowerCase() === clean.toLowerCase())) throw new Error("Ein Konto mit diesem Namen gibt es schon.");
   const account = { id: newId(state), name: clean, area, openingBalance, potType: null, potBudget: null,
-    potExcluded: [], profile: null };
+    potExcluded: [], profile: null, cutoffDay: null };
   state.accounts.push(account);
   return account;
 }

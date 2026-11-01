@@ -158,7 +158,9 @@ test("Stichtag: Eingänge ab dem 20. zählen zum Folgemonat", async () => {
   const s = potStatus("Sparen", 10000, "2026-11", potAmounts(shifted.filter((t) => t.date.startsWith("2026-11")), "Sparen"), "2026-11-01");
   assert.equal(s.status, "Sparziel erreicht");
   assert.equal(normalizeCutoff(""), null);
-  assert.throws(() => normalizeCutoff("31"));
+  assert.equal(normalizeCutoff("31"), 31);
+  assert.throws(() => normalizeCutoff("32"));
+  assert.throws(() => normalizeCutoff("1"));
 });
 
 test("Sparziel: Eingang 300 € minus Auto 140 € und Sparplan 60 € = 100 € netto, alter Kontostand zählt nicht", () => {

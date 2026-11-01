@@ -1,6 +1,7 @@
 /** Oberflächen-Helfer: Escaping, Icons, Monatsauswahl, Hinweise und Dialoge. */
 import { formatMonth, monthOf, todayIso } from "./logic/format.js";
 import { countedMonth } from "./logic/periods.js";
+import { cutoffResolver } from "./data.js";
 
 export function esc(value) {
   return String(value ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
@@ -26,8 +27,8 @@ export function icon(name) {
 
 /** Monate mit Buchungen plus aktueller Monat, neueste zuerst. */
 export function monthList(state) {
-  const cutoff = state.settings?.incomeCutoffDay ?? null;
-  const months = new Set(state.transactions.flatMap((t) => [monthOf(t.date), countedMonth(t, cutoff)]));
+  const cutoffFor = cutoffResolver(state);
+  const months = new Set(state.transactions.flatMap((t) => [monthOf(t.date), countedMonth(t, cutoffFor(t))]));
   months.add(monthOf(todayIso()));
   return [...months].sort().reverse();
 }

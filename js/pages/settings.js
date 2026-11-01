@@ -63,10 +63,11 @@ function potsSection(ctx) {
   return `<section class="card"><h2>Monatswechsel</h2>
     <form id="cutoffForm" class="row" style="align-items:end">
       <div class="field" style="max-width:220px"><label for="cutoffDay">Eingänge ab dem … zählen zum Folgemonat</label>
-        <input type="number" id="cutoffDay" name="cutoffDay" min="2" max="28" step="1" value="${cutoff ?? ""}" placeholder="aus"></div>
+        <input type="number" id="cutoffDay" name="cutoffDay" min="2" max="31" step="1" value="${cutoff ?? ""}" placeholder="aus"></div>
       <button>Speichern</button></form>
     <p class="subtle small">Beispiel Stichtag 20: Gehalt am 28.10. oder die Sparüberweisung am 31.10. zählen für November. Ausgaben zählen immer
-      in dem Monat, in dem sie anfallen. Leer lassen = jede Buchung zählt in ihrem Buchungsmonat.</p>
+      in dem Monat, in dem sie anfallen. Leer lassen = jede Buchung zählt in ihrem Buchungsmonat. 31 = letzter Tag des Monats.
+      Gilt für alle Konten, außer du stellst unten bei einem Konto einen eigenen Stichtag ein (z. B. Sparkonten: 31).</p>
     <div class="box bad" id="cutoffError" hidden></div></section>
     <section class="card"><h2>Töpfe einrichten</h2>
     <p class="subtle small"><b>Ausgaben-Topf:</b> so viel darf im Monat von diesem Konto ausgegeben werden (z. B. Essen 250 €).
@@ -76,7 +77,8 @@ function potsSection(ctx) {
       <h3>${esc(a.name)} <span class="subtle small">${a.area}</span></h3>
       <div class="fields"><div class="field"><label>Topf-Art</label><select name="type-${a.id}">${options([["", "kein Topf"], ...POT_TYPES.map((t) => [t, t])], a.potType || "")}</select></div>
       <div class="field"><label>Monatsbetrag (€)</label><input type="text" inputmode="decimal" name="budget-${a.id}" value="${formatAmountInput(a.potBudget)}" placeholder="z. B. 250"></div>
-      <div class="field"><label>Abweichend im ${formatMonth(month)} (€)</label><input type="text" inputmode="decimal" name="ov-${a.id}" value="${formatAmountInput(state.potOverrides[`${a.id}|${month}`] ?? null)}" placeholder="–"></div></div>
+      <div class="field"><label>Abweichend im ${formatMonth(month)} (€)</label><input type="text" inputmode="decimal" name="ov-${a.id}" value="${formatAmountInput(state.potOverrides[`${a.id}|${month}`] ?? null)}" placeholder="–"></div>
+      <div class="field"><label>Eingänge ab dem … zählen zum Folgemonat</label><input type="number" name="cut-${a.id}" min="2" max="31" step="1" value="${a.cutoffDay ?? ""}" placeholder="Standard${cutoff ? ` (${cutoff}.)` : " (aus)"}"></div></div>
       ${a.potType === "Sparen"
     ? `${a.potExcluded.map((c) => `<input type="hidden" name="ex-${a.id}" value="${c}">`).join("")}
       <p class="subtle small">Sparziel = alle Eingänge minus alle Abgänge dieses Kontos im Monat (z. B. +300 € − Auto − Sparplan).</p>`
@@ -213,8 +215,10 @@ export function bind(root, ctx) {
         const type = form.get(`type-${a.id}`) || null;
         const budget = optionalAmount(form.get(`budget-${a.id}`));
         if (type && budget === null) throw new Error(`Bei „${a.name}“ fehlt der Monatsbetrag.`);
+        let cut;
+        try { cut = normalizeCutoff(form.get(`cut-${a.id}`)); } catch (err) { throw new Error(`${a.name}: ${err.message}`); }
         updates.push([a.id, type, budget === null ? null : Math.abs(budget), optionalAmount(form.get(`ov-${a.id}`)),
-          form.getAll(`ex-${a.id}`).map(Number)]);
+          form.getAll(`ex-${a.id}`).map(Number), cut]);
       }
     } catch (err) {
       const box = root.querySelector("#potError");
@@ -223,8 +227,9 @@ export function bind(root, ctx) {
       return;
     }
     await ctx.commit((s) => {
-      for (const [id, type, budget, ov, ex] of updates) {
+      for (const [id, type, budget, ov, ex, cut] of updates) {
         setPot(s, id, { potType: type, potBudget: budget, potExcluded: ex });
+        s.accounts.find((a) => a.id === id).cutoffDay = cut;
         setPotOverride(s, id, month, type && ov !== null ? Math.abs(ov) : null);
       }
     }, "Töpfe gespeichert.");

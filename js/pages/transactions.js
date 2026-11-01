@@ -2,7 +2,7 @@
 import { formatDate, formatEur, formatMonth, monthOf } from "../logic/format.js";
 import { countedMonth } from "../logic/periods.js";
 import { TRANSFER, addRule, deleteTransaction, setCategory, setTransfer } from "../state.js";
-import { accountNames, filterTransactions, sortedCategories } from "../data.js";
+import { accountNames, cutoffResolver, filterTransactions, sortedCategories } from "../data.js";
 import { filterBar } from "./overview.js";
 import { confirmDialog, esc, options, toast } from "../ui.js";
 
@@ -38,9 +38,9 @@ function allList(ctx) {
   const f = filterBar(ctx, "tx");
   const query = (ui.txSearch || "").trim().toLowerCase();
   let txs = filterTransactions(state, { month: ui.txAllMonths ? null : f.month, area: f.area, accountId: f.accountId, counted: false });
-  const cutoff = state.settings?.incomeCutoffDay ?? null;
+  const cutoffFor = cutoffResolver(state);
   const countsFor = (t) => {
-    const m = countedMonth(t, cutoff);
+    const m = countedMonth(t, cutoffFor(t));
     return m === monthOf(t.date) ? "" : ` · zählt für ${formatMonth(m)}`;
   };
   if (query) txs = txs.filter((t) => `${t.payee} ${t.purpose}`.toLowerCase().includes(query));

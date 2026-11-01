@@ -108,3 +108,20 @@ test("Umbuchungs-Regel ohne Gegenseite: löschen hebt Markierung wieder auf", as
 function matchCategoryCount(s) {
   return s.transactions.filter((t) => t.categoryId !== null).length;
 }
+
+test("Stichtag pro Konto: Sparkonten erst am letzten Tag, Girokonto ab dem 23.", async () => {
+  const { monthData, countedTransactions } = await import("../js/data.js");
+  const { countedMonth } = await import("../js/logic/periods.js");
+  const s = createState();
+  s.settings.incomeCutoffDay = 23;
+  const giro = addAccount(s, { name: "Volksbank Giro", area: "Privat" });
+  const tr = addAccount(s, { name: "Trade Republic", area: "Privat" });
+  tr.cutoffDay = 31;
+  importTransactions(s, giro.id, rowsFrom("Datum;Empfänger;Zweck;Betrag\n24.11.2026;Arbeitgeber;Lohn;538,00\n"));
+  importTransactions(s, tr.id, rowsFrom("Datum;Empfänger;Zweck;Betrag\n25.11.2026;Ich;Extra;50,00\n30.11.2026;Ich;Sparen Dezember;300,00\n"));
+  const months = Object.fromEntries(countedTransactions(s).map((t) => [t.payee + t.purpose, t.date.slice(0, 7)]));
+  assert.deepEqual(months, { ArbeitgeberLohn: "2026-12", IchExtra: "2026-11", "IchSparen Dezember": "2026-12" });
+  assert.equal(countedMonth({ date: "2027-02-28", amount: 1 }, 31), "2027-03");
+  assert.equal(countedMonth({ date: "2026-10-30", amount: 1 }, 31), "2026-10");
+  assert.equal(monthData(s, "2026-12", "Beide", null).figures.income, 53800 + 30000);
+});

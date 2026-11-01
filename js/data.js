@@ -24,9 +24,16 @@ export function areasFor(area) {
   return area === BOTH ? AREAS : [area];
 }
 
+/** Stichtag je Buchung: eigener Stichtag des Kontos, sonst der allgemeine. */
+export function cutoffResolver(state) {
+  const general = state.settings?.incomeCutoffDay ?? null;
+  const perAccount = new Map(state.accounts.map((a) => [a.id, a.cutoffDay ?? null]));
+  return (t) => perAccount.get(t.accountId) ?? general;
+}
+
 /** Buchungen mit dem Datum, für das sie im Budget zählen (Eingänge ab dem Stichtag → Folgemonat). */
 export function countedTransactions(state) {
-  return withCountedDates(state.transactions, state.settings?.incomeCutoffDay ?? null);
+  return withCountedDates(state.transactions, cutoffResolver(state));
 }
 
 /**
