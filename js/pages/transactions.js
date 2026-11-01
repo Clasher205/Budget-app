@@ -1,7 +1,7 @@
 /** Buchungen: offene (unkategorisierte) zuordnen, alle Buchungen durchsuchen und korrigieren. */
 import { formatDate, formatEur, formatMonth, monthOf } from "../logic/format.js";
 import { countedMonth } from "../logic/periods.js";
-import { addRule, deleteTransaction, setCategory, setTransfer } from "../state.js";
+import { TRANSFER, addRule, deleteTransaction, setCategory, setTransfer } from "../state.js";
 import { accountNames, filterTransactions, sortedCategories } from "../data.js";
 import { filterBar } from "./overview.js";
 import { confirmDialog, esc, options, toast } from "../ui.js";
@@ -9,8 +9,10 @@ import { confirmDialog, esc, options, toast } from "../ui.js";
 const PAGE_SIZE = 150;
 
 function categorySelect(state, tx, action) {
+  const cats = sortedCategories(state).map((c) => [c.id, c.name]);
+  const items = action === "assign" ? [[TRANSFER, "↔ Umbuchung (eigenes Konto)"], ...cats] : cats;
   return `<select data-change="${action}" data-id="${tx.id}" aria-label="Kategorie">
-    ${options(sortedCategories(state).map((c) => [c.id, c.name]), tx.categoryId, "– Kategorie wählen –")}</select>`;
+    ${options(items, tx.categoryId, "– Kategorie wählen –")}</select>`;
 }
 
 function openList(state) {
@@ -20,6 +22,7 @@ function openList(state) {
   if (!open.length) return '<div class="card empty">Alle Buchungen sind kategorisiert. 🎉</div>';
   const shown = open.slice(0, PAGE_SIZE);
   return `<section class="card"><p class="subtle">${open.length} Buchungen ohne Kategorie. Kategorie wählen, dann wird sie sofort gespeichert.
+    Geld an eines deiner eigenen Konten (z. B. Sparkonto, Trade Republic)? Dann „↔ Umbuchung“ wählen, das zählt nicht als Ausgabe.
     Ist der Haken gesetzt, entsteht dabei eine Regel und alle Buchungen dieses Empfängers werden künftig automatisch so zugeordnet.</p>
     <ul class="list">${shown.map((t) => `<li>
       <div class="tx-main"><div><div class="tx-title">${esc(t.payee || "–")}</div>
@@ -87,13 +90,15 @@ export function bind(root, ctx) {
     if (!el) return;
     const id = Number(el.dataset.id);
     if (el.dataset.change === "assign" && el.value) {
-      const catId = Number(el.value);
+      const catId = el.value === TRANSFER ? TRANSFER : Number(el.value);
       const asRule = root.querySelector(`#rule-${id}`)?.checked;
       const tx = ctx.state.transactions.find((t) => t.id === id);
       await ctx.commit((s) => {
         if (asRule && tx.payee && !s.rules.some((r) => r.keyword.toLowerCase() === tx.payee.toLowerCase())) {
           const changed = addRule(s, tx.payee, catId);
           toast(`Regel „${tx.payee}“ erstellt, ${changed} Buchungen zugeordnet.`);
+        } else if (catId === TRANSFER) {
+          setTransfer(s, id, true);
         } else {
           setCategory(s, id, catId);
         }

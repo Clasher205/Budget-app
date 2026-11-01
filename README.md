@@ -13,7 +13,8 @@ Eine Content-Security-Policy in `index.html` verbietet der App technisch jede Ve
   ein Kursdiagramm und einen Monatsvergleich.
 - **Import:** CSV aus dem Online-Banking (Encoding, Trennzeichen und deutsches Zahlenformat werden erkannt,
   Soll/Haben möglich), Zuordnung pro Konto merken, Vorschau, Duplikaterkennung, fehlerhafte Zeilen werden gemeldet.
-- **Umbuchungen** zwischen eigenen Konten werden automatisch erkannt und zählen nicht als Ausgabe.
+- **Umbuchungen** zwischen eigenen Konten zählen nicht als Ausgabe: automatisch erkannt, wenn beide Konten importiert sind,
+  oder per Umbuchungs-Regel (z. B. „Trade Republic“), die auch ohne Gegenseite greift.
 - **Monatswechsel:** Eingänge ab dem 20. (einstellbar) zählen schon zum Folgemonat, z. B. Gehalt am 28. oder die Sparüberweisung am 31.
 - **Buchungen:** offene Buchungen zuordnen und dabei Regeln erstellen; suchen, korrigieren, Umbuchungen markieren.
 - **Übersicht:** Kennzahlen, Auffälligkeiten, Plan vs. Ist, Ausgaben pro Monat, Verteilung, größte Ausgaben.

@@ -1,5 +1,5 @@
 /* Service Worker: hält die App-Dateien offline vor. Daten liegen in IndexedDB, nicht hier. */
-const VERSION = "v4";
+const VERSION = "v5";
 const CACHE = `budget-app-${VERSION}`;
 const FILES = [
   "./", "./index.html", "./manifest.webmanifest", "./css/app.css",

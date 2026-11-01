@@ -5,8 +5,8 @@ import { AREAS } from "../logic/budget.js";
 import { POT_TYPES } from "../logic/pots.js";
 import { normalizeCutoff } from "../logic/periods.js";
 import { reportCsv, reportTables, reportXlsx } from "../logic/exportfile.js";
-import { addAccount, addCategory, addRule, backupPayload, deleteAccount, deleteCategory, deleteRule, parseBackup,
-  reapplyRules, setPot, setPotOverride } from "../state.js";
+import { TRANSFER, addAccount, addCategory, addRule, backupPayload, deleteAccount, deleteCategory, deleteRule, parseBackup,
+  reapplyRules, setPot, setPotOverride, updateRule } from "../state.js";
 import { accountNames, categoryNames, monthData, sortedCategories } from "../data.js";
 import { downloadFile, readFileBytes, requestPersistence, shareFile } from "../storage.js";
 import { filterBar } from "./overview.js";
@@ -17,6 +17,11 @@ export const SECTIONS = [
   ["konten", "Konten", "settings"], ["toepfe", "Töpfe", "course"], ["kategorien", "Kategorien", "list"],
   ["regeln", "Regeln", "list"], ["sicherung", "Sicherung & Abgleich", "save"], ["export", "Monatsbericht exportieren", "file"],
 ];
+
+function ruleTarget(form) {
+  const value = form.get("categoryId");
+  return value === TRANSFER ? TRANSFER : Number(value);
+}
 
 function optionalAmount(value) {
   const s = String(value ?? "").trim();
@@ -101,9 +106,11 @@ function rulesSection(state) {
   const rules = [...state.rules].sort((a, b) => a.priority - b.priority || a.id - b.id);
   return `<section class="card"><h2>Regeln</h2>
     <p class="subtle small">Das Schlüsselwort wird (ohne Groß-/Kleinschreibung) in Empfänger und Verwendungszweck gesucht. Die Regel mit der
-      kleinsten Priorität gewinnt. Manuell zugeordnete Buchungen bleiben unverändert.</p>
+      kleinsten Priorität gewinnt. Manuell zugeordnete Buchungen bleiben unverändert.<br>
+      <b>↔ Umbuchung:</b> Geld an oder von deinen eigenen Konten (z. B. Schlüsselwort „Trade Republic“ oder der Name deines
+      Sparkontos). Solche Buchungen zählen weder als Ausgabe noch als Einnahme, auch wenn die Gegenseite noch nicht importiert ist.</p>
     ${rules.length ? `<div class="table-wrap"><table><thead><tr><th class="num">Prio</th><th>Schlüsselwort</th><th>Kategorie</th><th></th></tr></thead><tbody>
-    ${rules.map((r) => `<tr><td class="num">${r.priority}</td><td>${esc(r.keyword)}</td><td>${esc(names.get(r.categoryId))}</td>
+    ${rules.map((r) => `<tr><td class="num">${r.priority}</td><td>${esc(r.keyword)}</td><td>${r.transfer ? "↔ Umbuchung" : esc(names.get(r.categoryId))}</td>
       <td class="num"><button class="link" data-action="edit-rule" data-id="${r.id}">Bearbeiten</button>
       <button class="link" data-action="delete-rule" data-id="${r.id}" style="color:var(--bad)">Löschen</button></td></tr>`).join("")}</tbody></table></div>`
     : '<p class="subtle">Noch keine Regeln. Am schnellsten entstehen sie unter Buchungen → Offen.</p>'}
@@ -112,7 +119,8 @@ function rulesSection(state) {
 
 function ruleForm(state, rule = {}) {
   return `<div class="fields"><div class="field"><label>Schlüsselwort</label><input type="text" name="keyword" required value="${esc(rule.keyword || "")}" placeholder="z. B. Netflix"></div>
-    <div class="field"><label>Kategorie</label><select name="categoryId">${options(sortedCategories(state).map((c) => [c.id, c.name]), rule.categoryId)}</select></div>
+    <div class="field"><label>Kategorie</label><select name="categoryId">${options([[TRANSFER, "↔ Umbuchung (eigenes Konto)"],
+      ...sortedCategories(state).map((c) => [c.id, c.name])], rule.transfer ? TRANSFER : rule.categoryId)}</select></div>
     <div class="field"><label>Priorität</label><input type="number" name="priority" min="0" step="1" value="${rule.priority ?? ""}" placeholder="automatisch"></div></div>`;
 }
 
@@ -291,19 +299,15 @@ export function bind(root, ctx) {
       case "add-rule":
         formDialog("Regel hinzufügen", ruleForm(state), (f) => {
           const prio = String(f.get("priority") || "").trim();
-          return ctx.commit((s) => toast(`Regel gespeichert, ${addRule(s, f.get("keyword"), Number(f.get("categoryId")), prio ? Number(prio) : null)} Buchungen neu zugeordnet.`));
+          return ctx.commit((s) => toast(`Regel gespeichert, ${addRule(s, f.get("keyword"), ruleTarget(f), prio ? Number(prio) : null)} Buchungen neu zugeordnet.`));
         });
         break;
       case "edit-rule": {
         const rule = state.rules.find((r) => r.id === id);
         formDialog("Regel bearbeiten", ruleForm(state, rule), (f) => {
-          const keyword = String(f.get("keyword") || "").trim();
-          if (!keyword) throw new Error("Schlüsselwort darf nicht leer sein.");
           const prio = String(f.get("priority") || "").trim();
-          return ctx.commit((s) => {
-            Object.assign(s.rules.find((r) => r.id === id), { keyword, categoryId: Number(f.get("categoryId")), priority: prio ? Number(prio) : rule.priority });
-            toast(`Regel gespeichert, ${reapplyRules(s)} Buchungen neu zugeordnet.`);
-          });
+          return ctx.commit((s) => toast(`Regel gespeichert, ${updateRule(s, id, {
+            keyword: f.get("keyword"), categoryId: ruleTarget(f), priority: prio ? Number(prio) : rule.priority })} Buchungen neu zugeordnet.`));
         });
         break;
       }

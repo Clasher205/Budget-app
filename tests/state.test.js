@@ -64,3 +64,47 @@ test("Stichtag-Einstellung: Standard 20, alte Stände bekommen sie nachgerüstet
   delete old.settings;
   assert.equal(upgradeState(old).settings.incomeCutoffDay, 20);
 });
+
+test("Umbuchungs-Regel: Abbuchung an eigenes Konto zählt nicht als Ausgabe, auch ohne Gegenseite", async () => {
+  const { TRANSFER, deleteRule, upgradeState } = await import("../js/state.js");
+  const { monthData } = await import("../js/data.js");
+  const s = createState();
+  const giro = addAccount(s, { name: "Volksbank Giro", area: "Privat" });
+  const tr = addAccount(s, { name: "Trade Republic", area: "Privat" });
+  addRule(s, "Trade Republic", TRANSFER);
+  const giroCsv = "Datum;Empfänger;Zweck;Betrag\n20.10.2026;Arbeitgeber Muster;Lohn;538,00\n31.10.2026;Trade Republic Bank;Sparen;-100,00\n"
+    + "31.10.2026;Muster Kiosk;Einkauf;-5,00\n";
+  importTransactions(s, giro.id, rowsFrom(giroCsv));
+  const out = s.transactions.find((t) => t.amount === -10000);
+  assert.deepEqual([out.transfer, out.transferByRule, out.transferPair], [true, true, false]);
+  const oct = monthData(s, "2026-10", "Beide", null);
+  assert.equal(oct.figures.expenses, 500);
+  assert.equal(monthData(s, "2026-11", "Beide", null).figures.income, 53800);
+  // Gegenseite später importiert: wird als Paar erkannt und zählt nicht als Einnahme
+  const res = importTransactions(s, tr.id, rowsFrom("Datum;Empfänger;Zweck;Betrag\n31.10.2026;Max Muster;Sparen;100,00\n"));
+  assert.equal(res.transfers, 1);
+  assert.equal(monthData(s, "2026-11", "Beide", null).figures.income, 53800);
+  // Regel löschen: Paar bleibt Umbuchung
+  deleteRule(s, s.rules.find((r) => r.transfer).id);
+  assert.equal(out.transfer, true);
+  // Alte Stände: bereits erkannte Paare werden als Paar übernommen
+  const old = createState();
+  old.transactions.push({ id: 99, accountId: 1, date: "2026-10-01", amount: -1, payee: "", purpose: "", categoryId: null, manual: false, transfer: true, transferManual: false, key: "x" });
+  assert.equal(upgradeState(old).transactions[0].transferPair, true);
+});
+
+test("Umbuchungs-Regel ohne Gegenseite: löschen hebt Markierung wieder auf", async () => {
+  const { TRANSFER, deleteRule } = await import("../js/state.js");
+  const s = createState();
+  const giro = addAccount(s, { name: "Giro", area: "Privat" });
+  addRule(s, "sparkonto", TRANSFER);
+  importTransactions(s, giro.id, rowsFrom("Datum;Empfänger;Zweck;Betrag\n31.10.2026;Eigenes Sparkonto;Sparen;-30,00\n"));
+  assert.equal(s.transactions[0].transfer, true);
+  assert.equal(matchCategoryCount(s), 0);
+  deleteRule(s, s.rules[0].id);
+  assert.equal(s.transactions[0].transfer, false);
+});
+
+function matchCategoryCount(s) {
+  return s.transactions.filter((t) => t.categoryId !== null).length;
+}

@@ -1,9 +1,12 @@
 /** Datenmodell und Aktionen (reine Funktionen auf dem State-Objekt, ohne Browser-APIs). */
-import { matchCategory, applyRules, matchTransfers } from "./logic/rules.js";
+import { matchCategory, matchTransferRule, applyRules, matchTransfers } from "./logic/rules.js";
 import { budgetKey, overrideKey } from "./logic/budget.js";
 import { DEFAULT_CUTOFF_DAY } from "./logic/periods.js";
 
 export const FORMAT_VERSION = 1;
+
+/** Ziel einer Regel, die Buchungen als Umbuchung zwischen eigenen Konten markiert. */
+export const TRANSFER = "transfer";
 
 export const DEFAULT_CATEGORIES = [
   ["Miete/Wohnen", "Ausgabe"], ["Lebensmittel", "Ausgabe"], ["Mobilität", "Ausgabe"], ["Abos/Software", "Ausgabe"],
@@ -51,6 +54,8 @@ export function upgradeState(state) {
     t.manual ??= false;
     t.transfer ??= false;
     t.transferManual ??= false;
+    t.transferByRule ??= false;
+    t.transferPair ??= Boolean(t.transfer && !t.transferManual);
   }
   const maxId = Math.max(0, ...["accounts", "categories", "transactions", "rules", "fixedCosts"]
     .flatMap((k) => state[k].map((x) => x.id)));
@@ -98,10 +103,11 @@ export function importTransactions(state, accountId, rows) {
   for (const r of rows) {
     if (existing.has(r.key)) { duplicates++; continue; }
     existing.add(r.key);
+    const byRule = matchTransferRule(r.payee, r.purpose, state.rules);
     state.transactions.push({
       id: newId(state), accountId, date: r.date, amount: r.amount, payee: r.payee, purpose: r.purpose,
-      categoryId: matchCategory(r.payee, r.purpose, state.rules), manual: false, transfer: false,
-      transferManual: false, key: r.key,
+      categoryId: matchCategory(r.payee, r.purpose, state.rules), manual: false, transfer: byRule,
+      transferManual: false, transferByRule: byRule, transferPair: false, key: r.key,
     });
     inserted++;
   }
@@ -151,12 +157,31 @@ export function deleteCategory(state, categoryId) {
 }
 
 /** Regel anlegen und auf alle nicht manuellen Buchungen anwenden; gibt die Anzahl neu kategorisierter Buchungen zurück. */
+/**
+ * Regel anlegen und anwenden; gibt die Anzahl geänderter Buchungen zurück.
+ * `categoryId` = TRANSFER legt eine Umbuchungs-Regel an (Geld an/von eigenen Konten, zählt nicht als Ausgabe/Einnahme).
+ */
 export function addRule(state, keyword, categoryId, priority = null) {
   const clean = (keyword || "").trim();
   if (!clean) throw new Error("Schlüsselwort darf nicht leer sein.");
   const prio = priority ?? Math.max(0, ...state.rules.map((r) => r.priority)) + 10;
-  state.rules.push({ id: newId(state), keyword: clean, categoryId, priority: prio });
-  return applyRules(state.transactions, state.rules);
+  const transfer = categoryId === TRANSFER;
+  state.rules.push({ id: newId(state), keyword: clean, categoryId: transfer ? null : categoryId, priority: prio, transfer });
+  const changed = applyRules(state.transactions, state.rules);
+  if (transfer) matchTransfers(state.transactions);
+  return changed;
+}
+
+/** Regel ändern (Ziel = Kategorie-ID oder TRANSFER) und alle Regeln neu anwenden. */
+export function updateRule(state, ruleId, { keyword, categoryId, priority }) {
+  const clean = (keyword || "").trim();
+  if (!clean) throw new Error("Schlüsselwort darf nicht leer sein.");
+  const transfer = categoryId === TRANSFER;
+  Object.assign(state.rules.find((r) => r.id === ruleId),
+    { keyword: clean, categoryId: transfer ? null : categoryId, priority, transfer });
+  const changed = applyRules(state.transactions, state.rules);
+  if (transfer) matchTransfers(state.transactions);
+  return changed;
 }
 
 export function deleteRule(state, ruleId) {

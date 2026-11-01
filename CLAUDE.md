@@ -22,6 +22,8 @@ Tage. Rest pro Tag = verbleibend ÷ verbleibende Tage (inkl. heute).
 zählen zum Folgemonat, damit Gehalt und Monatsend-Überweisungen (z. B. Sparen am 31.) im neuen Monat zählen. Ausgaben
 bleiben in ihrem Monat. Logik in `js/logic/periods.js`. Für Budget-Auswertungen immer `countedTransactions`/`filterTransactions`
 (counted) nutzen, für Listen mit echtem Datum `counted: false`.
+**Umbuchungen:** zählen nie als Einnahme/Ausgabe. Quellen: Paar-Erkennung (`transferPair`), Umbuchungs-Regeln
+(`rule.transfer`, Ziel `TRANSFER`, setzt `transferByRule`, wirkt auch ohne importierte Gegenseite) oder manuell (`transferManual`).
 
 ## Technik
 - Reines HTML/CSS/JS (ES-Module), kein Build. Beträge als **ganze Cent** (Number). Datum als ISO-String `JJJJ-MM-TT`.

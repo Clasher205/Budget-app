@@ -5,23 +5,45 @@ export function sortRules(rules) {
   return [...rules].sort((a, b) => a.priority - b.priority || a.id - b.id);
 }
 
-/** Kategorie der ersten passenden Regel (Suche in Empfänger und Verwendungszweck, ohne Groß-/Kleinschreibung). */
-export function matchCategory(payee, purpose, rules) {
-  const haystack = `${payee || ""}\n${purpose || ""}`.toLocaleLowerCase("de");
-  for (const rule of sortRules(rules)) {
-    const keyword = (rule.keyword || "").trim().toLocaleLowerCase("de");
-    if (keyword && haystack.includes(keyword)) return rule.categoryId;
-  }
-  return null;
+function matches(rule, payee, purpose) {
+  const keyword = (rule.keyword || "").trim().toLocaleLowerCase("de");
+  return Boolean(keyword) && `${payee || ""}\n${purpose || ""}`.toLocaleLowerCase("de").includes(keyword);
 }
 
-/** Kategorisiert alle nicht manuell gesetzten Buchungen neu; gibt die Anzahl Änderungen zurück. */
+/** Kategorie der ersten passenden Kategorie-Regel (Suche in Empfänger und Verwendungszweck, ohne Groß-/Kleinschreibung). */
+export function matchCategory(payee, purpose, rules) {
+  const rule = sortRules(rules).find((r) => !r.transfer && matches(r, payee, purpose));
+  return rule ? rule.categoryId : null;
+}
+
+/** true, wenn eine Umbuchungs-Regel passt (z. B. „Trade Republic“ = Geld an ein eigenes Konto). */
+export function matchTransferRule(payee, purpose, rules) {
+  return rules.some((r) => r.transfer && matches(r, payee, purpose));
+}
+
+/**
+ * Wendet alle Regeln neu an: Kategorien (außer manuell gesetzten) und Umbuchungs-Regeln
+ * (außer manuell festgelegten Umbuchungen). Gibt die Anzahl geänderter Buchungen zurück.
+ */
 export function applyRules(transactions, rules) {
   let changed = 0;
   for (const tx of transactions) {
-    if (tx.manual) continue;
-    const next = matchCategory(tx.payee, tx.purpose, rules);
-    if (next !== tx.categoryId) { tx.categoryId = next; changed++; }
+    let touched = false;
+    if (!tx.manual) {
+      const next = matchCategory(tx.payee, tx.purpose, rules);
+      if (next !== tx.categoryId) { tx.categoryId = next; touched = true; }
+    }
+    if (!tx.transferManual) {
+      const hit = matchTransferRule(tx.payee, tx.purpose, rules);
+      if (hit && !tx.transferByRule) {
+        tx.transferByRule = true;
+        if (!tx.transfer) { tx.transfer = true; touched = true; }
+      } else if (!hit && tx.transferByRule) {
+        tx.transferByRule = false;
+        if (!tx.transferPair) { tx.transfer = false; touched = true; }
+      }
+    }
+    if (touched) changed++;
   }
   return changed;
 }
@@ -33,7 +55,7 @@ export function applyRules(transactions, rules) {
  */
 export function matchTransfers(transactions, windowDays = 3) {
   const open = transactions
-    .filter((t) => !t.transfer && !t.transferManual && t.amount !== 0)
+    .filter((t) => !t.transferPair && !t.transferManual && t.amount !== 0)
     .sort((a, b) => a.date.localeCompare(b.date) || a.id - b.id);
   const incoming = new Map();
   for (const t of open) if (t.amount > 0) {
@@ -54,6 +76,7 @@ export function matchTransfers(transactions, windowDays = 3) {
     if (best) {
       used.add(out.id); used.add(best.id);
       out.transfer = true; best.transfer = true;
+      out.transferPair = true; best.transferPair = true;
       pairs++;
     }
   }
