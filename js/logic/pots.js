@@ -14,7 +14,7 @@ export function monthProgress(month, todayIso) {
 
 /**
  * Relevante Beträge eines Topfs (Cent, positiv = verbraucht bzw. gespart).
- * Ausgaben-Topf: nur Abbuchungen, ohne Umbuchungen und ausgeschlossene Kategorien.
+ * Ausgaben-Topf: nur Abbuchungen ohne Umbuchungen (optional ohne `excluded`-Kategorien; die App nutzt das nicht mehr).
  * Spar-Topf: Netto-Zufluss inkl. Umbuchungen.
  */
 export function potAmounts(transactions, potType, excluded = []) {

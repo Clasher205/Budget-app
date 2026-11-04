@@ -79,12 +79,10 @@ function potsSection(ctx) {
       <div class="field"><label>Monatsbetrag (€)</label><input type="text" inputmode="decimal" name="budget-${a.id}" value="${formatAmountInput(a.potBudget)}" placeholder="z. B. 250"></div>
       <div class="field"><label>Abweichend im ${formatMonth(month)} (€)</label><input type="text" inputmode="decimal" name="ov-${a.id}" value="${formatAmountInput(state.potOverrides[`${a.id}|${month}`] ?? null)}" placeholder="–"></div>
       <div class="field"><label>Eingänge ab dem … zählen zum Folgemonat</label><input type="number" name="cut-${a.id}" min="2" max="31" step="1" value="${a.cutoffDay ?? ""}" placeholder="Standard${cutoff ? ` (${cutoff}.)` : " (aus)"}"></div></div>
-      ${a.potType === "Sparen"
-    ? `${a.potExcluded.map((c) => `<input type="hidden" name="ex-${a.id}" value="${c}">`).join("")}
-      <p class="subtle small">Sparziel = alle Eingänge minus alle Abgänge dieses Kontos im Monat (z. B. +300 € − Auto − Sparplan).</p>`
-    : `<details ${a.potExcluded.length ? "open" : ""}><summary>Kategorien, die nicht zum Topf zählen${a.potExcluded.length ? ` (${a.potExcluded.length})` : ""}</summary>
-        <p class="subtle small">Z. B. Miete oder Verträge, die vom Hauptkonto abgehen, aber nicht zum Freizeitbudget gehören.</p>
-        <div class="chips">${cats.filter((c) => c.kind === "Ausgabe").map((c) => `<label><input type="checkbox" name="ex-${a.id}" value="${c.id}" ${a.potExcluded.includes(c.id) ? "checked" : ""}>${esc(c.name)}</label>`).join("")}</div></details>`}
+      ${a.potExcluded.map((c) => `<input type="hidden" name="ex-${a.id}" value="${c}">`).join("")}
+      ${a.potType ? `<p class="subtle small">${a.potType === "Sparen"
+    ? "Sparziel = alle Eingänge minus alle Abgänge dieses Kontos im Monat (z. B. +300 € − Auto − Sparplan)."
+    : "Ausgaben-Topf = alle Abbuchungen dieses Kontos außer Umbuchungen. Kategorien dienen nur der Beschreibung."}</p>` : ""}
     </div>`).join("")}
     <div class="box bad" id="potError" hidden></div><button class="primary">Töpfe speichern</button></form></section>`;
 }
