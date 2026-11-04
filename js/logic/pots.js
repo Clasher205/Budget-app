@@ -12,21 +12,25 @@ export function monthProgress(month, todayIso) {
   return [Number(todayIso.slice(8, 10)), days];
 }
 
+/** Umbuchung mit „Ausgleich“ im Verwendungszweck: zählt im Ausgaben-Topf trotzdem mit (z. B. Geld zum Ausgleichen eines Topfs). */
+export function isCompensation(t) {
+  return Boolean(t.transfer) && (t.purpose || "").toLocaleLowerCase("de").includes("ausgleich");
+}
+
 /**
  * Relevante Beträge eines Topfs (Cent, positiv = verbraucht bzw. gespart).
- * Ausgaben-Topf: nur Abbuchungen ohne Umbuchungen (optional ohne `excluded`-Kategorien; die App nutzt das nicht mehr).
+ * Ausgaben-Topf: Abbuchungen minus Eingänge, ohne Umbuchungen (außer „Ausgleich“).
  * Spar-Topf: Netto-Zufluss inkl. Umbuchungen.
  */
-export function potAmounts(transactions, potType, excluded = []) {
-  return potTransactions(transactions, potType, excluded)
+export function potAmounts(transactions, potType) {
+  return potTransactions(transactions, potType)
     .map((t) => ({ date: t.date, value: potType === "Sparen" ? t.amount : -t.amount }));
 }
 
 /** Die Buchungen, die in einen Topf einfließen (gleiche Auswahl wie `potAmounts`). */
-export function potTransactions(transactions, potType, excluded = []) {
+export function potTransactions(transactions, potType) {
   if (potType === "Sparen") return transactions;
-  const skip = new Set(excluded);
-  return transactions.filter((t) => t.amount < 0 && !t.transfer && !skip.has(t.categoryId));
+  return transactions.filter((t) => !t.transfer || isCompensation(t));
 }
 
 /** Kurs eines Topfs. `ahead` > 0 heißt: besser als das Soll bis heute. */
@@ -75,13 +79,13 @@ export function potStatus(potType, budget, month, amounts, todayIso) {
 }
 
 /** Monatsvergleich. `diff` > 0: Budget unterschritten bzw. Sparziel übertroffen; `kept` null = Monat läuft. */
-export function potHistory(potType, budgetsByMonth, transactions, excluded, todayIso) {
+export function potHistory(potType, budgetsByMonth, transactions, todayIso) {
   const current = monthOf(todayIso);
   const result = [];
   for (const [month, budget] of budgetsByMonth) {
     if (budget === null || budget === undefined) continue;
     const monthTx = transactions.filter((t) => t.date.startsWith(month));
-    const used = potAmounts(monthTx, potType, excluded).reduce((s, a) => s + a.value, 0);
+    const used = potAmounts(monthTx, potType).reduce((s, a) => s + a.value, 0);
     const diff = potType === "Sparen" ? used - budget : budget - used;
     result.push({ month, budget, used, diff, kept: month >= current ? null : diff >= 0 });
   }

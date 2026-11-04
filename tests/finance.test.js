@@ -98,12 +98,22 @@ test("pot course: example food account", () => {
   assert.equal(save.status, "Sparziel erreicht");
 });
 
-test("pot excluded categories and history", () => {
-  const txs = [{ date: "2026-09-02", amount: -4000, categoryId: 2 }, { date: "2026-09-03", amount: -1000, categoryId: 7 }];
-  assert.deepEqual(potAmounts(txs, "Ausgaben", [7]).map((a) => a.value), [4000]);
+test("Ausgaben-Topf: Eingänge verrechnet, Umbuchungen nur mit „Ausgleich“, Kategorien egal", () => {
+  const txs = [
+    { date: "2026-09-02", amount: -10000, categoryId: 2 }, { date: "2026-09-03", amount: -45000, categoryId: 7 },
+    { date: "2026-09-04", amount: 3000, purpose: "Rückzahlung Essen" },
+    { date: "2026-09-05", amount: 25000, transfer: true, purpose: "Essen September" },
+    { date: "2026-09-06", amount: 5000, transfer: true, purpose: "Ausgleich Essen" },
+    { date: "2026-09-07", amount: -2000, transfer: true, purpose: "AUSGLEICH Freizeit" },
+    { date: "2026-09-08", amount: -30000, transfer: true, purpose: "Sparen" },
+  ];
+  assert.deepEqual(potAmounts(txs, "Ausgaben").map((a) => a.value), [10000, 45000, -3000, -5000, 2000]);
+  assert.equal(potStatus("Ausgaben", 75000, "2026-09", potAmounts(txs, "Ausgaben"), "2026-09-15").used, 49000);
+  assert.equal(potAmounts(txs, "Sparen").length, txs.length);
   const hist = potHistory("Ausgaben", [["2026-08", 25000], ["2026-09", 25000], ["2026-10", 25000]],
-    [{ date: "2026-08-05", amount: -30000 }, { date: "2026-09-05", amount: -20000 }, { date: "2026-10-01", amount: -1000 }], [], "2026-10-15");
-  assert.deepEqual(hist.map((h) => [h.month, h.diff, h.kept]), [["2026-08", -5000, false], ["2026-09", 5000, true], ["2026-10", 24000, null]]);
+    [{ date: "2026-08-05", amount: -30000 }, { date: "2026-09-05", amount: -20000 }, { date: "2026-09-06", amount: 1000 },
+      { date: "2026-10-01", amount: -1000 }], "2026-10-15");
+  assert.deepEqual(hist.map((h) => [h.month, h.diff, h.kept]), [["2026-08", -5000, false], ["2026-09", 6000, true], ["2026-10", 24000, null]]);
 });
 
 test("fixed costs: occurrences and upcoming", () => {

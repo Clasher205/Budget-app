@@ -82,7 +82,7 @@ function potsSection(ctx) {
       ${a.potExcluded.map((c) => `<input type="hidden" name="ex-${a.id}" value="${c}">`).join("")}
       ${a.potType ? `<p class="subtle small">${a.potType === "Sparen"
     ? "Sparziel = alle Eingänge minus alle Abgänge dieses Kontos im Monat (z. B. +300 € − Auto − Sparplan)."
-    : "Ausgaben-Topf = alle Abbuchungen dieses Kontos außer Umbuchungen. Kategorien dienen nur der Beschreibung."}</p>` : ""}
+    : "Ausgaben-Topf = Abbuchungen minus Eingänge dieses Kontos. Umbuchungen zählen nicht, außer mit „Ausgleich“ im Verwendungszweck. Kategorien dienen nur der Beschreibung."}</p>` : ""}
     </div>`).join("")}
     <div class="box bad" id="potError" hidden></div><button class="primary">Töpfe speichern</button></form></section>`;
 }

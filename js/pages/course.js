@@ -1,6 +1,6 @@
 /** Startseite „Kurs“: Töpfe mit Kursanzeige, Rest pro Tag und Monatsvergleich. */
 import { formatDate, formatEur, formatMonth, formatPct, monthOf, percent, shiftMonth, todayIso } from "../logic/format.js";
-import { potAmounts, potHistory, potStatus, potTransactions } from "../logic/pots.js";
+import { isCompensation, potAmounts, potHistory, potStatus, potTransactions } from "../logic/pots.js";
 import { potBudgetFor } from "../state.js";
 import { countedTransactions } from "../data.js";
 import { courseChart } from "../charts.js";
@@ -10,10 +10,10 @@ import { esc, monthSelect, monthList } from "../ui.js";
 function countedList(list, isSpend, month) {
   const sorted = [...list].sort((a, b) => (a.bookedDate || a.date).localeCompare(b.bookedDate || b.date));
   return `<details style="margin-top:8px"><summary>Welche Buchungen zählen? (${sorted.length})</summary>
-    <p class="subtle small">${isSpend ? "Alle Abbuchungen dieses Kontos außer Umbuchungen. Kategorien dienen nur der Beschreibung."
+    <p class="subtle small">${isSpend ? "Abbuchungen minus Eingänge dieses Kontos. Umbuchungen zählen nicht, außer mit „Ausgleich“ im Verwendungszweck. Kategorien dienen nur der Beschreibung."
     : "Alle Eingänge und Abgänge dieses Kontos, auch Umbuchungen."} Eingänge ab dem Stichtag des Vormonats zählen für ${formatMonth(month)}.</p>
     <ul class="list">${sorted.map((t) => `<li><div class="tx-main"><div><div class="tx-title">${esc(t.payee || "–")}</div>
-      <div class="tx-sub">${formatDate(t.bookedDate || t.date)}${t.bookedDate ? ` · zählt für ${formatMonth(month)}` : ""}${t.transfer ? " · Umbuchung" : ""}${t.purpose ? ` · ${esc(t.purpose)}` : ""}</div></div>
+      <div class="tx-sub">${formatDate(t.bookedDate || t.date)}${t.bookedDate ? ` · zählt für ${formatMonth(month)}` : ""}${t.transfer ? (isSpend && isCompensation(t) ? " · Ausgleich" : " · Umbuchung") : ""}${t.purpose ? ` · ${esc(t.purpose)}` : ""}</div></div>
       <div class="amount ${t.amount > 0 ? "pos" : ""}">${formatEur(t.amount)}</div></div></li>`).join("")}</ul></details>`;
 }
 
@@ -34,7 +34,7 @@ function potCard(state, account, month, today) {
     : (s.ahead >= 0 ? "vor dem Plan ✓" : "hinter dem Plan");
   const metrics = isSpend
     ? [["Budget", formatEur(budget), `${formatEur(s.perDayNominal)} pro Tag`],
-      ["Ausgegeben", formatEur(s.used), `${formatPct(percent(s.used, budget))} verbraucht`],
+      ["Ausgegeben", formatEur(s.used), `netto · ${formatPct(percent(s.used, budget))} verbraucht`],
       ["Soll bis heute", formatEur(s.ideal), `Tag ${s.day} von ${s.days}`],
       ["Abweichung", formatEur(Math.abs(s.ahead)), aheadLabel]]
     : [["Sparziel", formatEur(budget), "pro Monat, netto"],
@@ -68,7 +68,7 @@ function historyTable(state, pots, month, today) {
   for (const acc of pots) {
     const tx = countedTransactions(state).filter((t) => t.accountId === acc.id);
     const plan = range.map((m) => [m, potBudgetFor(state, acc, m)]);
-    for (const h of potHistory(acc.potType, plan, tx, [], today)) {
+    for (const h of potHistory(acc.potType, plan, tx, today)) {
       const result = h.kept === null ? "läuft" : h.kept ? "✅" : "❌";
       const tone = h.kept === null ? "" : h.kept ? "pos" : "";
       const [name, year] = formatMonth(h.month).split(" ");
