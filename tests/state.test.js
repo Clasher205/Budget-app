@@ -122,6 +122,19 @@ test("Stichtag pro Konto: Sparkonten erst am letzten Tag, Girokonto ab dem 23.",
   const months = Object.fromEntries(countedTransactions(s).map((t) => [t.payee + t.purpose, t.date.slice(0, 7)]));
   assert.deepEqual(months, { ArbeitgeberLohn: "2026-12", IchExtra: "2026-11", "IchSparen Dezember": "2026-12" });
   assert.equal(countedMonth({ date: "2027-02-28", amount: 1 }, 31), "2027-03");
-  assert.equal(countedMonth({ date: "2026-10-30", amount: 1 }, 31), "2026-10");
+  assert.equal(countedMonth({ date: "2026-09-29", amount: 1 }, 31), "2026-09");
+  assert.equal(countedMonth({ date: "2026-09-30", amount: 1 }, 31), "2026-10");
   assert.equal(monthData(s, "2026-12", "Beide", null).figures.income, 53800 + 30000);
+});
+
+test("Stichtag am Wochenende: Freitag davor zählt schon zum Folgemonat", async () => {
+  const { countedMonth, effectiveCutoff } = await import("../js/logic/periods.js");
+  assert.equal(effectiveCutoff("2026-10", 31), 30);
+  assert.equal(effectiveCutoff("2027-02", 31), 26);
+  assert.equal(effectiveCutoff("2026-11", 23), 23);
+  assert.equal(effectiveCutoff("2026-08", 23), 21);
+  assert.equal(countedMonth({ date: "2026-10-30", amount: 10000 }, 31), "2026-11");
+  assert.equal(countedMonth({ date: "2026-10-29", amount: 10000 }, 31), "2026-10");
+  assert.equal(countedMonth({ date: "2026-10-30", amount: -10000 }, 31), "2026-10");
+  assert.equal(countedMonth({ date: "2026-08-21", amount: 53800 }, 23), "2026-09");
 });

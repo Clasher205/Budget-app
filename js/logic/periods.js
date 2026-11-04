@@ -13,11 +13,22 @@ export function normalizeCutoff(value) {
   return day;
 }
 
-/** Monat, für den eine Buchung zählt. Ausgaben bleiben in ihrem Monat; ein Stichtag über dem Monatsende gilt als letzter Tag. */
+/**
+ * Tatsächlicher Stichtag in einem Monat: über dem Monatsende gilt der letzte Tag; fällt er auf Samstag oder Sonntag,
+ * gilt der Freitag davor (Banken buchen dann meist schon am Freitag).
+ */
+export function effectiveCutoff(month, cutoffDay) {
+  const day = Math.min(cutoffDay, daysInMonth(month));
+  const [y, m] = month.split("-").map(Number);
+  const weekday = new Date(Date.UTC(y, m - 1, day)).getUTCDay();
+  return day - (weekday === 6 ? 1 : weekday === 0 ? 2 : 0);
+}
+
+/** Monat, für den eine Buchung zählt. Ausgaben bleiben in ihrem Monat. */
 export function countedMonth(tx, cutoffDay) {
   const month = monthOf(tx.date);
   if (!cutoffDay || tx.amount <= 0) return month;
-  return Number(tx.date.slice(8, 10)) >= Math.min(cutoffDay, daysInMonth(month)) ? shiftMonth(month, 1) : month;
+  return Number(tx.date.slice(8, 10)) >= effectiveCutoff(month, cutoffDay) ? shiftMonth(month, 1) : month;
 }
 
 /**

@@ -66,7 +66,7 @@ function potsSection(ctx) {
         <input type="number" id="cutoffDay" name="cutoffDay" min="2" max="31" step="1" value="${cutoff ?? ""}" placeholder="aus"></div>
       <button>Speichern</button></form>
     <p class="subtle small">Beispiel Stichtag 20: Gehalt am 28.10. oder die Sparüberweisung am 31.10. zählen für November. Ausgaben zählen immer
-      in dem Monat, in dem sie anfallen. Leer lassen = jede Buchung zählt in ihrem Buchungsmonat. 31 = letzter Tag des Monats.
+      in dem Monat, in dem sie anfallen. Leer lassen = jede Buchung zählt in ihrem Buchungsmonat. 31 = letzter Tag des Monats. Fällt der Stichtag auf ein Wochenende, zählt schon der Freitag davor.
       Gilt für alle Konten, außer du stellst unten bei einem Konto einen eigenen Stichtag ein (z. B. Sparkonten: 31).</p>
     <div class="box bad" id="cutoffError" hidden></div></section>
     <section class="card"><h2>Töpfe einrichten</h2>
