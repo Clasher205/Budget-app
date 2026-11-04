@@ -117,6 +117,9 @@ function registerServiceWorker() {
         if (worker.state === "installed" && navigator.serviceWorker.controller) showUpdate(worker);
       });
     });
+    document.addEventListener("visibilitychange", () => {
+      if (document.visibilityState === "visible") reg.update().catch(() => {});
+    });
   }).catch((err) => console.warn("Service Worker nicht registriert:", err));
   let reloading = false;
   navigator.serviceWorker.addEventListener("controllerchange", () => {

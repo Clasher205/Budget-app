@@ -1,5 +1,5 @@
 /* Service Worker: hält die App-Dateien offline vor. Daten liegen in IndexedDB, nicht hier. */
-const VERSION = "v12";
+const VERSION = "v13";
 const CACHE = `budget-app-${VERSION}`;
 const FILES = [
   "./", "./index.html", "./manifest.webmanifest", "./css/app.css",
@@ -12,7 +12,7 @@ const FILES = [
 ];
 
 self.addEventListener("install", (event) => {
-  event.waitUntil(caches.open(CACHE).then((cache) => cache.addAll(FILES)));
+  event.waitUntil(caches.open(CACHE).then((cache) => cache.addAll(FILES.map((f) => new Request(f, { cache: "reload" })))));
 });
 
 self.addEventListener("activate", (event) => {
