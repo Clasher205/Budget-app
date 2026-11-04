@@ -13,7 +13,11 @@ export const DEFAULT_CATEGORIES = [
   ["Versicherungen", "Ausgabe"], ["Freizeit", "Ausgabe"], ["Studium", "Ausgabe"], ["Gesundheit", "Ausgabe"],
   ["Shopping", "Ausgabe"], ["Einnahmen Job", "Einnahme"], ["Einnahmen Business", "Einnahme"],
   ["Business-Ausgaben", "Ausgabe"], ["Steuern/Rücklagen", "Ausgabe"], ["Sonstiges", "Ausgabe"],
+  ["Familie", "Einnahme"], ["Studiengeld", "Einnahme"],
 ];
+
+/** Einnahme-Kategorien, die ältere Stände einmalig bekommen (Merker `meta.incomeCategoriesAdded`). */
+const ADDED_INCOME_CATEGORIES = ["Familie", "Studiengeld"];
 
 export function createState() {
   const state = {
@@ -29,7 +33,7 @@ export function createState() {
     fixedCosts: [],
     ignoredSubscriptions: [],
     settings: { incomeCutoffDay: DEFAULT_CUTOFF_DAY },
-    meta: { created: new Date().toISOString(), updated: new Date().toISOString(), lastBackup: null },
+    meta: { created: new Date().toISOString(), updated: new Date().toISOString(), lastBackup: null, incomeCategoriesAdded: true },
   };
   DEFAULT_CATEGORIES.forEach(([name, kind], order) => state.categories.push({ id: newId(state), name, kind, order }));
   return state;
@@ -62,6 +66,14 @@ export function upgradeState(state) {
     .flatMap((k) => state[k].map((x) => x.id)));
   state.nextId = Math.max(state.nextId || 1, maxId + 1);
   if (!("incomeCutoffDay" in state.settings)) state.settings.incomeCutoffDay = DEFAULT_CUTOFF_DAY;
+  if (!state.meta.incomeCategoriesAdded) {
+    const names = new Set(state.categories.map((c) => c.name.toLocaleLowerCase("de")));
+    let order = Math.max(-1, ...state.categories.map((c) => c.order ?? 0));
+    for (const name of ADDED_INCOME_CATEGORIES) {
+      if (!names.has(name.toLocaleLowerCase("de"))) state.categories.push({ id: newId(state), name, kind: "Einnahme", order: ++order });
+    }
+    state.meta.incomeCategoriesAdded = true;
+  }
   state.version = FORMAT_VERSION;
   return state;
 }

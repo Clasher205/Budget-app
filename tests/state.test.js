@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync, existsSync } from "node:fs";
-import { addAccount, addRule, backupPayload, createState, deleteCategory, importTransactions, parseBackup,
+import { addAccount, addRule, backupPayload, createState, deleteCategory, upgradeState, importTransactions, parseBackup,
   setCategory, setTransfer, areaBalance } from "../js/state.js";
 import { readCsv, guessMapping, transform } from "../js/logic/csv.js";
 
@@ -137,4 +137,17 @@ test("Stichtag am Wochenende: Freitag davor zählt schon zum Folgemonat", async 
   assert.equal(countedMonth({ date: "2026-10-29", amount: 10000 }, 31), "2026-10");
   assert.equal(countedMonth({ date: "2026-10-30", amount: -10000 }, 31), "2026-10");
   assert.equal(countedMonth({ date: "2026-08-21", amount: 53800 }, 23), "2026-09");
+});
+
+test("ältere Stände bekommen einmalig die Einnahme-Kategorien Familie und Studiengeld", () => {
+  const old = createState();
+  old.categories = old.categories.filter((c) => !["Familie", "Studiengeld"].includes(c.name));
+  delete old.meta.incomeCategoriesAdded;
+  upgradeState(old);
+  const added = old.categories.filter((c) => ["Familie", "Studiengeld"].includes(c.name));
+  assert.deepEqual(added.map((c) => c.kind), ["Einnahme", "Einnahme"]);
+  assert.equal(new Set(old.categories.map((c) => c.id)).size, old.categories.length);
+  old.categories = old.categories.filter((c) => c.name !== "Familie");
+  upgradeState(old);
+  assert.equal(old.categories.some((c) => c.name === "Familie"), false);
 });

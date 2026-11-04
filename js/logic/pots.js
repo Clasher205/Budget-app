@@ -19,18 +19,20 @@ export function isCompensation(t) {
 
 /**
  * Relevante Beträge eines Topfs (Cent, positiv = verbraucht bzw. gespart).
- * Ausgaben-Topf: Abbuchungen minus Eingänge, ohne Umbuchungen (außer „Ausgleich“).
+ * Ausgaben-Topf: Abbuchungen minus Eingänge, ohne Umbuchungen (außer „Ausgleich“) und ohne Eingänge mit
+ * Einnahme-Kategorie (`incomeCategories`, z. B. Gehalt, Familie, Studiengeld).
  * Spar-Topf: Netto-Zufluss inkl. Umbuchungen.
  */
-export function potAmounts(transactions, potType) {
-  return potTransactions(transactions, potType)
+export function potAmounts(transactions, potType, incomeCategories = []) {
+  return potTransactions(transactions, potType, incomeCategories)
     .map((t) => ({ date: t.date, value: potType === "Sparen" ? t.amount : -t.amount }));
 }
 
 /** Die Buchungen, die in einen Topf einfließen (gleiche Auswahl wie `potAmounts`). */
-export function potTransactions(transactions, potType) {
+export function potTransactions(transactions, potType, incomeCategories = []) {
   if (potType === "Sparen") return transactions;
-  return transactions.filter((t) => !t.transfer || isCompensation(t));
+  const income = new Set(incomeCategories);
+  return transactions.filter((t) => (t.transfer ? isCompensation(t) : !(t.amount > 0 && income.has(t.categoryId))));
 }
 
 /** Kurs eines Topfs. `ahead` > 0 heißt: besser als das Soll bis heute. */
@@ -79,13 +81,13 @@ export function potStatus(potType, budget, month, amounts, todayIso) {
 }
 
 /** Monatsvergleich. `diff` > 0: Budget unterschritten bzw. Sparziel übertroffen; `kept` null = Monat läuft. */
-export function potHistory(potType, budgetsByMonth, transactions, todayIso) {
+export function potHistory(potType, budgetsByMonth, transactions, todayIso, incomeCategories = []) {
   const current = monthOf(todayIso);
   const result = [];
   for (const [month, budget] of budgetsByMonth) {
     if (budget === null || budget === undefined) continue;
     const monthTx = transactions.filter((t) => t.date.startsWith(month));
-    const used = potAmounts(monthTx, potType).reduce((s, a) => s + a.value, 0);
+    const used = potAmounts(monthTx, potType, incomeCategories).reduce((s, a) => s + a.value, 0);
     const diff = potType === "Sparen" ? used - budget : budget - used;
     result.push({ month, budget, used, diff, kept: month >= current ? null : diff >= 0 });
   }

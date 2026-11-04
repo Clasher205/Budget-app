@@ -110,6 +110,9 @@ test("Ausgaben-Topf: Eingänge verrechnet, Umbuchungen nur mit „Ausgleich“, 
   assert.deepEqual(potAmounts(txs, "Ausgaben").map((a) => a.value), [10000, 45000, -3000, -5000, 2000]);
   assert.equal(potStatus("Ausgaben", 75000, "2026-09", potAmounts(txs, "Ausgaben"), "2026-09-15").used, 49000);
   assert.equal(potAmounts(txs, "Sparen").length, txs.length);
+  const withIncome = [...txs, { date: "2026-09-09", amount: 53800, categoryId: 10, purpose: "Lohn" },
+    { date: "2026-09-10", amount: -1500, categoryId: 10 }];
+  assert.deepEqual(potAmounts(withIncome, "Ausgaben", [10]).map((a) => a.value), [10000, 45000, -3000, -5000, 2000, 1500]);
   const hist = potHistory("Ausgaben", [["2026-08", 25000], ["2026-09", 25000], ["2026-10", 25000]],
     [{ date: "2026-08-05", amount: -30000 }, { date: "2026-09-05", amount: -20000 }, { date: "2026-09-06", amount: 1000 },
       { date: "2026-10-01", amount: -1000 }], "2026-10-15");

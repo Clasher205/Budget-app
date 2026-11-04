@@ -6,11 +6,16 @@ import { countedTransactions } from "../data.js";
 import { courseChart } from "../charts.js";
 import { esc, monthSelect, monthList } from "../ui.js";
 
+/** IDs der Einnahme-Kategorien: solche Eingänge verringern die Ausgaben eines Topfs nicht. */
+function incomeCategoryIds(state) {
+  return state.categories.filter((c) => c.kind === "Einnahme").map((c) => c.id);
+}
+
 /** Aufklappbare Liste der Buchungen, aus denen die Zahlen eines Topfs berechnet werden. */
 function countedList(list, isSpend, month) {
   const sorted = [...list].sort((a, b) => (a.bookedDate || a.date).localeCompare(b.bookedDate || b.date));
   return `<details style="margin-top:8px"><summary>Welche Buchungen zählen? (${sorted.length})</summary>
-    <p class="subtle small">${isSpend ? "Abbuchungen minus Eingänge dieses Kontos. Umbuchungen zählen nicht, außer mit „Ausgleich“ im Verwendungszweck. Kategorien dienen nur der Beschreibung."
+    <p class="subtle small">${isSpend ? "Abbuchungen minus Eingänge dieses Kontos. Nicht verrechnet: Umbuchungen (außer mit „Ausgleich“ im Verwendungszweck) und Eingänge mit Einnahme-Kategorie wie Gehalt, Familie oder Studiengeld."
     : "Alle Eingänge und Abgänge dieses Kontos, auch Umbuchungen."} Eingänge ab dem Stichtag des Vormonats zählen für ${formatMonth(month)}.</p>
     <ul class="list">${sorted.map((t) => `<li><div class="tx-main"><div><div class="tx-title">${esc(t.payee || "–")}</div>
       <div class="tx-sub">${formatDate(t.bookedDate || t.date)}${t.bookedDate ? ` · zählt für ${formatMonth(month)}` : ""}${t.transfer ? (isSpend && isCompensation(t) ? " · Ausgleich" : " · Umbuchung") : ""}${t.purpose ? ` · ${esc(t.purpose)}` : ""}</div></div>
@@ -20,7 +25,8 @@ function countedList(list, isSpend, month) {
 function potCard(state, account, month, today) {
   const budget = potBudgetFor(state, account, month);
   const tx = countedTransactions(state).filter((t) => t.accountId === account.id && t.date.startsWith(month));
-  const s = potStatus(account.potType, budget, month, potAmounts(tx, account.potType), today);
+  const income = incomeCategoryIds(state);
+  const s = potStatus(account.potType, budget, month, potAmounts(tx, account.potType, income), today);
   const isSpend = s.potType === "Ausgaben";
   const share = budget ? Math.min(Math.max(s.used / budget, 0), 1) : 0;
   const idealShare = s.days ? s.day / s.days : 0;
@@ -55,7 +61,7 @@ function potCard(state, account, month, today) {
     <div class="grid cols-4">${metrics.map(([l, v, n]) => `<div class="metric"><div class="label">${l}</div><div class="value">${v}</div><div class="note">${n}</div></div>`).join("")}</div>
     <div class="box ${s.level}">${esc(s.status)}</div>
     ${s.day > 0 ? courseChart(s) : ""}
-    ${tx.length ? countedList(potTransactions(tx, account.potType), isSpend, month)
+    ${tx.length ? countedList(potTransactions(tx, account.potType, income), isSpend, month)
     : '<p class="subtle small">Für dieses Konto gibt es in diesem Monat noch keine importierten Buchungen.</p>'}
   </section>`;
 }
@@ -68,7 +74,7 @@ function historyTable(state, pots, month, today) {
   for (const acc of pots) {
     const tx = countedTransactions(state).filter((t) => t.accountId === acc.id);
     const plan = range.map((m) => [m, potBudgetFor(state, acc, m)]);
-    for (const h of potHistory(acc.potType, plan, tx, today)) {
+    for (const h of potHistory(acc.potType, plan, tx, today, incomeCategoryIds(state))) {
       const result = h.kept === null ? "läuft" : h.kept ? "✅" : "❌";
       const tone = h.kept === null ? "" : h.kept ? "pos" : "";
       const [name, year] = formatMonth(h.month).split(" ");
