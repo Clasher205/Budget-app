@@ -48,6 +48,27 @@ test("readCsv skips preamble and reports bad rows, transform continues", () => {
   assert.equal(errors.length, 2);
 });
 
+test("readCsv: ING-Export mit aufgefüllten Infozeilen", () => {
+  const pad = (line) => line + ";".repeat(8 - (line.match(/;/g) || []).length);
+  const text = [
+    "Umsatzanzeige;Datei erstellt am: 04.11.2026 09:15", "", "IBAN;DE00 0000 0000 0000 0000 00", "Kontoname;Girokonto",
+    "Bank;ING", "Kunde;Erika Beispiel", "Zeitraum;01.10.2026 - 04.11.2026", "Saldo;250,00;EUR", "",
+    "Sortierung;Datum absteigend", "",
+    "In der CSV-Datei finden Sie alle bereits gebuchten Umsätze.", "",
+    "Buchung;Wertstellungsdatum;Auftraggeber/Empfänger;Buchungstext;Verwendungszweck;Saldo;Währung;Betrag;Währung",
+    "02.11.2026;02.11.2026;Supermarkt Muster;Lastschrift;Einkauf;250,00;EUR;-12,34;EUR",
+    "30.10.2026;30.10.2026;Erika Beispiel;Gutschrift;Essen November;262,34;EUR;250,00;EUR",
+  ].map(pad).join("\n");
+  const parsed = readCsv(text);
+  assert.equal(parsed.headerLine, 14);
+  assert.equal(parsed.headers[0], "Buchung");
+  assert.deepEqual(parsed.errors, []);
+  const mapping = guessMapping(parsed.headers);
+  assert.deepEqual(mappingProblems(mapping), []);
+  const { rows } = transform(parsed, mapping);
+  assert.deepEqual(rows.map((r) => [r.date, r.amount, r.payee]), [["2026-11-02", -1234, "Supermarkt Muster"], ["2026-10-30", 25000, "Erika Beispiel"]]);
+});
+
 test("guessMapping prefers exact names, supports Soll/Haben", () => {
   const m = guessMapping(["Datum", "Name", "Buchungstext", "Soll", "Haben"]);
   assert.deepEqual([m.date, m.payee, m.purpose, m.debit, m.credit, m.useDebitCredit],

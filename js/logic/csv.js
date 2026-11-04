@@ -78,32 +78,42 @@ function uniqueHeaders(headers) {
   });
 }
 
+/** Anzahl Zellen ohne leere Zellen am Zeilenende (manche Banken füllen alle Zeilen mit „;“ auf). */
+function filledLength(cells) {
+  let n = cells.length;
+  while (n > 0 && !cells[n - 1].trim()) n--;
+  return n;
+}
+
 /**
  * Liest eine Bank-CSV fehlertolerant. Tabelle = breiteste Zeilenlänge, die mindestens zweimal vorkommt
- * (Kopfzeile + Buchungen), damit Info-Vorspann wie bei ING nicht als Tabelle gilt. Kaputte Zeilen werden gemeldet.
+ * (Kopfzeile + Buchungen), damit Info-Vorspann wie bei ING nicht als Tabelle gilt. Leere Zellen am Zeilenende
+ * zählen dabei nicht mit. Kaputte Zeilen werden gemeldet.
  */
 export function readCsv(text) {
   const delimiter = detectDelimiter(text);
   const all = parseCsv(text, delimiter);
-  const lengths = all.map((r) => r.length).filter((l) => l > 1);
+  const lengths = all.map(filledLength).filter((l) => l > 1);
   if (!lengths.length) throw new Error("Die Datei enthält keine erkennbare Tabelle.");
   const counts = new Map();
   for (const l of lengths) counts.set(l, (counts.get(l) || 0) + 1);
   const repeated = [...counts].filter(([, c]) => c >= 2).map(([l]) => l);
-  const width = repeated.length ? Math.max(...repeated) : mostCommon(lengths)[0];
-  const headerIdx = all.findIndex((r) => r.length === width);
-  const headers = uniqueHeaders(all[headerIdx]);
+  const minWidth = repeated.length ? Math.max(...repeated) : mostCommon(lengths)[0];
+  const headerIdx = all.findIndex((r) => filledLength(r) >= minWidth);
+  const width = filledLength(all[headerIdx]);
+  const headers = uniqueHeaders(all[headerIdx].slice(0, width));
   const rows = [];
   const errors = [];
   for (let i = headerIdx + 1; i < all.length; i++) {
-    let cells = all[i];
+    const filled = filledLength(all[i]);
     const line = i + 1;
-    if (!cells.some((c) => c.trim())) continue;
-    if (cells.length > width && !cells.slice(width).some((c) => c.trim())) cells = cells.slice(0, width);
-    if (cells.length !== width) {
-      errors.push({ line, reason: `falsche Spaltenanzahl (${cells.length} statt ${width})` });
+    if (!filled) continue;
+    if (filled > width || (filled < minWidth && all[i].length < minWidth)) {
+      errors.push({ line, reason: `falsche Spaltenanzahl (${filled} statt ${width})` });
       continue;
     }
+    const cells = all[i].slice(0, width);
+    while (cells.length < width) cells.push("");
     rows.push({ line, cells: cells.map((c) => c.trim()) });
   }
   return { headers, rows, errors, delimiter, headerLine: headerIdx + 1 };
